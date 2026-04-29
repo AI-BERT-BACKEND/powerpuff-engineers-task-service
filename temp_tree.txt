@@ -1,0 +1,116 @@
+Listado de rutas de carpetas para el volumen Windows-SSD
+El número de serie del volumen es 16D0-7BEB
+C:\USERS\JUANV\ONEDRIVE\DOCUMENTOS\POWERPUFF-ENGINEERS-TASK-SERVICE\SRC
+|   .gitkeep
+|   
+\---main
+    |   .gitkeep
+    |   
+    +---java
+    |   |   .gitkeep
+    |   |   
+    |   \---com
+    |       |   .gitkeep
+    |       |   
+    |       \---aibert
+    |           |   .gitkeep
+    |           |   
+    |           \---dosw
+    |               |   .gitkeep
+    |               |   
+    |               +---application
+    |               |   |   .gitkeep
+    |               |   |   
+    |               |   +---dto
+    |               |   |   |   .gitkeep
+    |               |   |   |   
+    |               |   |   +---request
+    |               |   |   |       .gitkeep
+    |               |   |   |       
+    |               |   |   \---response
+    |               |   |           .gitkeep
+    |               |   |           
+    |               |   +---mapper
+    |               |   |       .gitkeep
+    |               |   |       
+    |               |   +---service
+    |               |   |       .gitkeep
+    |               |   |       
+    |               |   \---usecase
+    |               |       |   .gitkeep
+    |               |       |   
+    |               |       \---user
+    |               |               .gitkeep
+    |               |               
+    |               +---config
+    |               |       .gitkeep
+    |               |       
+    |               +---domain
+    |               |   |   .gitkeep
+    |               |   |   
+    |               |   +---exceptions
+    |               |   |       .gitkeep
+    |               |   |       
+    |               |   +---model
+    |               |   |   |   .gitkeep
+    |               |   |   |   
+    |               |   |   +---user
+    |               |   |   |       .gitkeep
+    |               |   |   |       
+    |               |   |   \---valueObjects
+    |               |   |           .gitkeep
+    |               |   |           
+    |               |   \---ports
+    |               |       |   .gitkeep
+    |               |       |   
+    |               |       +---in
+    |               |       |       .gitkeep
+    |               |       |       
+    |               |       \---out
+    |               |               .gitkeep
+    |               |               
+    |               +---entrypoints
+    |               |   |   .gitkeep
+    |               |   |   
+    |               |   +---advice
+    |               |   |       .gitkeep
+    |               |   |       
+    |               |   \---rest
+    |               |       |   .gitkeep
+    |               |       |   
+    |               |       +---controller
+    |               |       |       .gitkeep
+    |               |       |       
+    |               |       \---mapper
+    |               |               .gitkeep
+    |               |               
+    |               \---infrastructure
+    |                   |   .gitkeep
+    |                   |   
+    |                   +---adapters
+    |                   |   |   .gitkeep
+    |                   |   |   
+    |                   |   +---adapter
+    |                   |   |       .gitkeep
+    |                   |   |       
+    |                   |   \---persistence
+    |                   |       |   .gitkeep
+    |                   |       |   
+    |                   |       +---entity
+    |                   |       |       .gitkeep
+    |                   |       |       
+    |                   |       +---mapper
+    |                   |       |       .gitkeep
+    |                   |       |       
+    |                   |       \---repository
+    |                   |               .gitkeep
+    |                   |               
+    |                   \---external
+    |                       |   .gitkeep
+    |                       |   
+    |                       \---email
+    |                               .gitkeep
+    |                               
+    \---resources
+            .gitkeep
+            
