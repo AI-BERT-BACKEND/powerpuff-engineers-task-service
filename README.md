@@ -249,3 +249,7 @@ docker/
 - OpenAPI
 - Papers / fuentes usadas
 
+# Evidencia Swagger
+
+![Evidencia Swagger](docs/img/captura_swagger.png)
+
