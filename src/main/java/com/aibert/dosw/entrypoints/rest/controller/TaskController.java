@@ -14,19 +14,27 @@ import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -43,7 +51,8 @@ public class TaskController {
     private final TaskDtoMapper taskDtoMapper;
 
     @PostMapping
-    @Operation(summary = "Crear una nueva tarea", description = "Crea una nueva tarea con los detalles proporcionados y le asigna un estado inicial.")
+    @Operation(summary = "Crear una nueva tarea",
+            description = "Crea una nueva tarea con los detalles proporcionados y le asigna un estado inicial.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Tarea creada exitosamente"),
             @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos")
@@ -67,7 +76,15 @@ public class TaskController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
         if ("kanban".equalsIgnoreCase(view)) {
-            KanbanResponse kanban = getTasksForViewUseCase.getKanbanView(studentId);
+            Map<TaskStatus, List<Task>> grouped = getTasksForViewUseCase.getKanbanView(studentId);
+            KanbanResponse kanban = KanbanResponse.builder()
+                    .todo(grouped.getOrDefault(TaskStatus.TODO, List.of()).stream()
+                            .map(taskDtoMapper::toResponse).toList())
+                    .inProgress(grouped.getOrDefault(TaskStatus.IN_PROGRESS, List.of()).stream()
+                            .map(taskDtoMapper::toResponse).toList())
+                    .completed(grouped.getOrDefault(TaskStatus.COMPLETED, List.of()).stream()
+                            .map(taskDtoMapper::toResponse).toList())
+                    .build();
             return ResponseEntity.ok(kanban);
         }
 
@@ -77,7 +94,6 @@ public class TaskController {
             return ResponseEntity.ok(response);
         }
 
-        // Default: R12 ordered tasks
         List<Task> tasks = taskOrganizerUseCase.getOrganizedTasks(studentId, sortBy);
         List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
         return ResponseEntity.ok(response);
@@ -99,7 +115,8 @@ public class TaskController {
     }
 
     @GetMapping("/student/{studentId}")
-    @Operation(summary = "Obtener tareas por estudiante", description = "Retorna todas las tareas de un estudiante.")
+    @Operation(summary = "Obtener tareas por estudiante",
+            description = "Retorna todas las tareas de un estudiante.")
     @ApiResponse(responseCode = "200", description = "Lista de tareas obtenida exitosamente")
     public ResponseEntity<List<TaskResponse>> getTasksByStudentId(@PathVariable String studentId) {
         List<Task> tasks = getTasksUseCase.getTasksByStudentId(studentId);
@@ -108,7 +125,8 @@ public class TaskController {
     }
 
     @PostMapping("/student/{studentId}/organize")
-    @Operation(summary = "Organizar tareas (Calendario)", description = "Organiza y asigna fechas a las tareas pendientes del estudiante.")
+    @Operation(summary = "Organizar tareas (Calendario)",
+            description = "Organiza y asigna fechas a las tareas pendientes del estudiante.")
     @ApiResponse(responseCode = "200", description = "Tareas organizadas exitosamente")
     public ResponseEntity<List<TaskResponse>> organizeTasks(@PathVariable String studentId) {
         List<Task> organizedTasks = organizeTasksUseCase.organizeTasksForStudent(studentId);
@@ -116,4 +134,3 @@ public class TaskController {
         return ResponseEntity.ok(response);
     }
 }
-

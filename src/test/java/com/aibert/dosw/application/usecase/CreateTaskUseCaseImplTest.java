@@ -31,7 +31,6 @@ class CreateTaskUseCaseImplTest {
 
     @Test
     void createTask_ShouldAssignTodoStatusAndSave() {
-        // Arrange
         Task newTask = Task.builder()
                 .title("Test Task")
                 .studentId("S123")
@@ -49,17 +48,15 @@ class CreateTaskUseCaseImplTest {
                 .priority(TaskPriority.HIGH)
                 .estimatedDurationMinutes(60)
                 .deadline(newTask.getDeadline())
-                .status(TaskStatus.TODO) // This is what the use case sets
+                .status(TaskStatus.TODO)
                 .build();
 
         when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Test Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenReturn(savedTask);
 
-        // Act
         Task result = createTaskUseCase.createTask(newTask);
 
-        // Assert
         assertNotNull(result);
         assertEquals(TaskStatus.TODO, result.getStatus());
         assertEquals("some-uuid", result.getId());
@@ -68,7 +65,6 @@ class CreateTaskUseCaseImplTest {
 
     @Test
     void createTask_WhenStatusIsAlreadySet_ShouldNotOverride() {
-        // Arrange
         Task newTask = Task.builder()
                 .title("Test Task")
                 .studentId("S123")
@@ -81,10 +77,8 @@ class CreateTaskUseCaseImplTest {
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Test Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenReturn(newTask);
 
-        // Act
         Task result = createTaskUseCase.createTask(newTask);
 
-        // Assert
         assertEquals(TaskStatus.IN_PROGRESS, result.getStatus());
         verify(taskRepositoryPort, times(1)).save(newTask);
     }

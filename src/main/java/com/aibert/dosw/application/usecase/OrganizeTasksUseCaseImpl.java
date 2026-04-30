@@ -10,60 +10,60 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class OrganizeTasksUseCaseImpl implements OrganizeTasksUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
-    private static final int MAX_MINUTES_PER_DAY = 240; // 4 hours max per day to avoid burnout
+    private static final int MAX_MINUTES_PER_DAY = 240;
 
     @Override
     public List<Task> organizeTasksForStudent(String studentId) {
         List<Task> allTasks = taskRepositoryPort.findByStudentId(studentId);
 
-        // Only organize TODO tasks
-        List<Task> tasksToOrganize = allTasks.stream()
+        List<Task> pendingTasks = allTasks.stream()
                 .filter(t -> t.getStatus() == TaskStatus.TODO)
                 .sorted(Comparator.comparing(this::getPriorityScore).reversed()
                         .thenComparing(Task::getDeadline))
-                .collect(Collectors.toList());
+                .toList();
 
         Map<LocalDate, Integer> dailyAssignedMinutes = new HashMap<>();
-        LocalDate currentDate = LocalDate.now();
+        LocalDate today = LocalDate.now();
 
-        for (Task task : tasksToOrganize) {
-            LocalDate assignedDate = assignDateForTask(task, dailyAssignedMinutes, currentDate);
+        for (Task task : pendingTasks) {
+            LocalDate assignedDate = findAvailableDateForTask(task, dailyAssignedMinutes, today);
             task.setScheduledDate(LocalDateTime.of(assignedDate, LocalTime.of(9, 0)));
         }
 
-        taskRepositoryPort.saveAll(tasksToOrganize);
+        taskRepositoryPort.saveAll(pendingTasks);
         return allTasks;
     }
 
-    private LocalDate assignDateForTask(Task task, Map<LocalDate, Integer> dailyAssignedMinutes, LocalDate startDate) {
-        LocalDate dateIter = startDate;
-        int duration = task.getEstimatedDurationMinutes() != null ? task.getEstimatedDurationMinutes() : 60;
+    private LocalDate findAvailableDateForTask(Task task,
+                                               Map<LocalDate, Integer> dailyAssignedMinutes,
+                                               LocalDate startDate) {
+        int duration = task.getEstimatedDurationMinutes() != null
+                ? task.getEstimatedDurationMinutes() : 60;
+        LocalDate deadline = task.getDeadline().toLocalDate();
+        LocalDate effectiveDeadline = deadline.isBefore(startDate) ? startDate : deadline;
 
-        while (true) {
-            int currentAssigned = dailyAssignedMinutes.getOrDefault(dateIter, 0);
-            if (currentAssigned + duration <= MAX_MINUTES_PER_DAY) {
-                if (dateIter.atStartOfDay().isBefore(task.getDeadline()) || dateIter.isEqual(task.getDeadline().toLocalDate())) {
-                    dailyAssignedMinutes.put(dateIter, currentAssigned + duration);
-                    return dateIter;
-                } else if (dateIter.isAfter(task.getDeadline().toLocalDate())) {
-                    LocalDate deadlineDay = task.getDeadline().toLocalDate();
-                    if (deadlineDay.isBefore(startDate)) {
-                        deadlineDay = startDate;
-                    }
-                    dailyAssignedMinutes.put(deadlineDay, dailyAssignedMinutes.getOrDefault(deadlineDay, 0) + duration);
-                    return deadlineDay;
-                }
+        LocalDate candidate = startDate;
+        while (!candidate.isAfter(effectiveDeadline)) {
+            int assigned = dailyAssignedMinutes.getOrDefault(candidate, 0);
+            if (assigned + duration <= MAX_MINUTES_PER_DAY) {
+                dailyAssignedMinutes.put(candidate, assigned + duration);
+                return candidate;
             }
-            dateIter = dateIter.plusDays(1);
+            candidate = candidate.plusDays(1);
         }
+
+        dailyAssignedMinutes.merge(effectiveDeadline, duration, Integer::sum);
+        return effectiveDeadline;
     }
 
     private int getPriorityScore(Task task) {

@@ -1,7 +1,7 @@
 package com.aibert.dosw.entrypoints.rest.controller;
 
-import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
 import com.aibert.dosw.application.dto.request.CreateTaskRequest;
+import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
 import com.aibert.dosw.application.mapper.TaskDtoMapper;
@@ -24,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,8 +43,6 @@ class TaskControllerTest {
 
     @InjectMocks
     private TaskController taskController;
-
-    // ─── POST /api/tasks ──────────────────────────────────────────────────────
 
     @Test
     void createTask_ShouldReturnCreatedResponse() {
@@ -72,8 +71,6 @@ class TaskControllerTest {
         verify(createTaskUseCase).createTask(mappedTask);
         verify(taskDtoMapper).toResponse(createdTask);
     }
-
-    // ─── PATCH /api/tasks/{id}/status (AC2, AC3) ──────────────────────────────
 
     @Test
     void updateTaskStatus_ShouldReturn200WithUpdatedTask() {
@@ -107,17 +104,15 @@ class TaskControllerTest {
         assertNotNull(response.getBody().getCompletedAt());
     }
 
-    // ─── GET /api/tasks?view=kanban (AC1) ─────────────────────────────────────
-
     @Test
     void getTasks_WithKanbanView_ShouldReturnKanbanGroupedResponse() {
-        KanbanResponse kanban = KanbanResponse.builder()
-                .todo(List.of(TaskResponse.builder().id("1").status(TaskStatus.TODO).build()))
-                .inProgress(List.of())
-                .completed(List.of())
-                .build();
+        Task t1 = Task.builder().id("1").status(TaskStatus.TODO).build();
+        TaskResponse tr1 = TaskResponse.builder().id("1").status(TaskStatus.TODO).build();
+        
+        Map<TaskStatus, List<Task>> kanbanMap = Map.of(TaskStatus.TODO, List.of(t1));
 
-        when(getTasksForViewUseCase.getKanbanView("S1")).thenReturn(kanban);
+        when(getTasksForViewUseCase.getKanbanView("S1")).thenReturn(kanbanMap);
+        when(taskDtoMapper.toResponse(t1)).thenReturn(tr1);
 
         ResponseEntity<?> response = taskController.getTasks("S1", null, "kanban", null, null, null);
 
@@ -125,10 +120,9 @@ class TaskControllerTest {
         assertInstanceOf(KanbanResponse.class, response.getBody());
         KanbanResponse body = (KanbanResponse) response.getBody();
         assertEquals(1, body.getTodo().size());
+        assertEquals(0, body.getInProgress().size());
         verify(getTasksForViewUseCase).getKanbanView("S1");
     }
-
-    // ─── GET /api/tasks?view=calendar (AC4, AC5, AC6) ────────────────────────
 
     @Test
     void getTasks_WithCalendarView_ShouldReturnFilteredTaskList() {
@@ -149,4 +143,3 @@ class TaskControllerTest {
         verify(getTasksForViewUseCase).getCalendarView("S2", TaskStatus.TODO, start, end);
     }
 }
-

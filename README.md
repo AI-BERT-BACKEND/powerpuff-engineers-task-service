@@ -138,7 +138,7 @@ Un sistema inteligente que ayude a los estudiantes a planificar, priorizar y equ
 | Seguridad | Spring Security, JWT        |
 | Base de datos | PostgreSQL              |
 | Testing   | JUnit, Mockito              |
-| DevOps    | Docker, GitHub Actions      |
+| DevOps    | Docker, Docker Compose, GitHub Actions |
 | Calidad   | SonarCloud, JaCoCo          |
 
 ---
@@ -213,8 +213,8 @@ Reporte generado con **JaCoCo** y analizado con **SonarCloud**
 ## Requisitos
 
 - Java 21
-- Docker
-- PostgreSQL
+- Maven 3.9+
+- Docker & Docker Compose
 
 ## Clonar repositorio
 
@@ -223,21 +223,62 @@ git clone https://github.com/usuario/proyecto.git
 cd proyecto
 ```
 
-## Backend
+## Opción 1: Con Docker (recomendado)
+
+Levanta PostgreSQL + la aplicación en un solo comando:
 
 ```bash
-./mvnw spring-boot:run
+# Copiar variables de entorno
+cp .env.example .env
+
+# Construir y levantar todos los servicios
+docker-compose up --build
+```
+
+La API queda disponible en `http://localhost:8080`.
+Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+Para detener:
+```bash
+docker-compose down
+```
+
+Para detener y eliminar el volumen de PostgreSQL:
+```bash
+docker-compose down -v
+```
+
+## Opción 2: Local sin Docker (H2 in-memory)
+
+No requiere base de datos externa. Los datos se pierden al reiniciar.
+
+```bash
+mvn spring-boot:run
 ```
 
 ---
 
 # Estructura del Proyecto
 
-```bash
-src/
-docs/
-tests/
-docker/
+```
+task-service/
+├── src/
+│   ├── main/
+│   │   ├── java/com/aibert/dosw/
+│   │   │   ├── application/        # Use cases, DTOs, mappers
+│   │   │   ├── config/             # Spring Security config
+│   │   │   ├── domain/             # Ports, models, exceptions
+│   │   │   ├── entrypoints/        # REST controllers, exception handlers
+│   │   │   └── infrastructure/     # JPA adapters, entities, repositories
+│   │   └── resources/
+│   │       ├── application.yml         # Local dev (H2 in-memory)
+│   │       └── application-docker.yml  # Docker (PostgreSQL)
+│   └── test/
+│       └── java/com/aibert/dosw/   # Unit tests (Mockito)
+├── .env.example                    # Template for local Docker credentials
+├── docker-compose.yml              # PostgreSQL + app services
+├── Dockerfile                      # Multi-stage build
+└── pom.xml
 ```
 
 ---

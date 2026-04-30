@@ -12,56 +12,59 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
+    private static final int DEADLINE_URGENCY_HOURS = 24;
 
     @Override
     public List<Task> getOrganizedTasks(String studentId, SortCriteriaEnum sortCriteria) {
         List<Task> tasks = taskRepositoryPort.findByStudentId(studentId);
 
-        // AC3 & AC4: Recalculate priority — tasks with deadline in < 24h -> HIGH
-        boolean tasksUpdated = false;
-        LocalDateTime now = LocalDateTime.now();
-        for (Task task : tasks) {
-            if (task.getDeadline() != null) {
-                long hoursUntilDeadline = ChronoUnit.HOURS.between(now, task.getDeadline());
-                if (hoursUntilDeadline >= 0 && hoursUntilDeadline <= 24 && task.getPriority() != TaskPriority.CRITICAL) {
-                    if (task.getPriority() != TaskPriority.HIGH) {
-                        task.setPriority(TaskPriority.HIGH);
-                        tasksUpdated = true;
-                    }
-                }
-            }
-        }
+        escalatePriorityForUrgentTasks(tasks);
 
-        if (tasksUpdated) {
-            taskRepositoryPort.saveAll(tasks);
-        }
-
-        // AC1 & AC2: Sort based on criteria (default = PRIORITY)
         SortCriteriaEnum criteria = sortCriteria != null ? sortCriteria : SortCriteriaEnum.PRIORITY;
 
         return tasks.stream()
-                .sorted(getComparator(criteria))
-                .collect(Collectors.toList());
+                .sorted(buildComparator(criteria))
+                .toList();
     }
 
-    private Comparator<Task> getComparator(SortCriteriaEnum criteria) {
-        switch (criteria) {
-            case DEADLINE:
-                return Comparator.comparing(Task::getDeadline, Comparator.nullsLast(Comparator.naturalOrder()));
-            case SUBJECT:
-                return Comparator.comparing(Task::getSubjectId, Comparator.nullsLast(String::compareToIgnoreCase));
-            case PRIORITY:
-            default:
-                return Comparator.comparing(this::getPriorityScore).reversed()
-                        .thenComparing(Task::getDeadline, Comparator.nullsLast(Comparator.naturalOrder()));
+    private void escalatePriorityForUrgentTasks(List<Task> tasks) {
+        LocalDateTime now = LocalDateTime.now();
+        boolean anyUpdated = false;
+
+        for (Task task : tasks) {
+            if (task.getDeadline() == null) continue;
+
+            long hoursUntilDeadline = ChronoUnit.HOURS.between(now, task.getDeadline());
+            boolean isUrgent = hoursUntilDeadline >= 0 && hoursUntilDeadline <= DEADLINE_URGENCY_HOURS;
+            boolean canEscalate = task.getPriority() != TaskPriority.CRITICAL
+                    && task.getPriority() != TaskPriority.HIGH;
+
+            if (isUrgent && canEscalate) {
+                task.setPriority(TaskPriority.HIGH);
+                anyUpdated = true;
+            }
         }
+
+        if (anyUpdated) {
+            taskRepositoryPort.saveAll(tasks);
+        }
+    }
+
+    private Comparator<Task> buildComparator(SortCriteriaEnum criteria) {
+        return switch (criteria) {
+            case DEADLINE -> Comparator.comparing(Task::getDeadline,
+                    Comparator.nullsLast(Comparator.naturalOrder()));
+            case SUBJECT -> Comparator.comparing(Task::getSubjectId,
+                    Comparator.nullsLast(String::compareToIgnoreCase));
+            case PRIORITY -> Comparator.comparing(this::getPriorityScore).reversed()
+                    .thenComparing(Task::getDeadline, Comparator.nullsLast(Comparator.naturalOrder()));
+        };
     }
 
     private int getPriorityScore(Task task) {

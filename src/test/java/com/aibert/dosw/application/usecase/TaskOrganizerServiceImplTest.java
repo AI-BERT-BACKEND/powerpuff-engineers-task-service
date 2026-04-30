@@ -20,7 +20,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class TaskOrganizerServiceImplTest {
+class TaskOrganizerServiceImplTest {
 
     @Mock
     private TaskRepositoryPort taskRepositoryPort;
@@ -34,7 +34,6 @@ public class TaskOrganizerServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // task1: LOW priority, far deadline
         task1 = Task.builder()
                 .id("1")
                 .title("Task 1")
@@ -43,7 +42,6 @@ public class TaskOrganizerServiceImplTest {
                 .subjectId("MATH")
                 .build();
 
-        // task2: MEDIUM priority, deadline in 12 hours (should be upgraded to HIGH)
         task2 = Task.builder()
                 .id("2")
                 .title("Task 2")
@@ -52,7 +50,6 @@ public class TaskOrganizerServiceImplTest {
                 .subjectId("PHYSICS")
                 .build();
 
-        // task3: CRITICAL priority, deadline tomorrow
         task3 = Task.builder()
                 .id("3")
                 .title("Task 3")
@@ -68,11 +65,9 @@ public class TaskOrganizerServiceImplTest {
 
         List<Task> result = taskOrganizerService.getOrganizedTasks("student1", null);
 
-        // task2 should be upgraded to HIGH
         assertEquals(TaskPriority.HIGH, task2.getPriority());
         verify(taskRepositoryPort, times(1)).saveAll(anyList());
 
-        // Order should be CRITICAL (task3), HIGH (task2), LOW (task1)
         assertEquals("3", result.get(0).getId());
         assertEquals("2", result.get(1).getId());
         assertEquals("1", result.get(2).getId());
@@ -84,7 +79,6 @@ public class TaskOrganizerServiceImplTest {
 
         List<Task> result = taskOrganizerService.getOrganizedTasks("student1", SortCriteriaEnum.DEADLINE);
 
-        // Order should be closest deadline first: task2 (12h), task3 (30h), task1 (5 days)
         assertEquals("2", result.get(0).getId());
         assertEquals("3", result.get(1).getId());
         assertEquals("1", result.get(2).getId());
@@ -96,7 +90,6 @@ public class TaskOrganizerServiceImplTest {
 
         List<Task> result = taskOrganizerService.getOrganizedTasks("student1", SortCriteriaEnum.SUBJECT);
 
-        // Alphabetical: CHEMISTRY (task3), MATH (task1), PHYSICS (task2)
         assertEquals("3", result.get(0).getId());
         assertEquals("1", result.get(1).getId());
         assertEquals("2", result.get(2).getId());

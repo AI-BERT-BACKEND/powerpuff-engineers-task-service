@@ -10,11 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
-/**
- * Implements the use case for updating a task's status.
- * AC2: updates status and returns the saved task.
- * AC3: automatically records completedAt when status is COMPLETED.
- */
 @Service
 @RequiredArgsConstructor
 public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
@@ -28,7 +23,6 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
 
         task.setStatus(newStatus);
 
-        // AC3: register completedAt when transitioning to COMPLETED
         if (TaskStatus.COMPLETED.equals(newStatus)) {
             task.setCompletedAt(LocalDateTime.now());
         } else {
