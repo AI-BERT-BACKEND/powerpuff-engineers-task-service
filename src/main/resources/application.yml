@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: task-service
+  # Perfil por defecto: in-memory (no requiere base de datos).
+  # Para producción/Azure sobreescribir con: SPRING_PROFILES_ACTIVE=postgres
+  profiles:
+    active: inmemory
 
 springdoc:
   api-docs:
