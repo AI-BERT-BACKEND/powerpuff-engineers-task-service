@@ -1,40 +1,37 @@
 services:
-
   postgres:
     image: postgres:16-alpine
-    container_name: task-service-postgres
+    container_name: task-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: taskdb
-      POSTGRES_USER: taskuser
-      POSTGRES_PASSWORD: taskpass
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5440:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      -  task_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U taskuser -d taskdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  app:
+  backend:
     build: .
-    container_name: task-service-app
+    container_name: task-service
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: postgres
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: taskdb
-      DB_USERNAME: taskuser
-      DB_PASSWORD: taskpass
-      DB_SSL_MODE: disable
+      DB_NAME: ${DB_NAME}
+      DB_URL: ${DB_URL}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
-  pgdata:
+  task_db_data:
