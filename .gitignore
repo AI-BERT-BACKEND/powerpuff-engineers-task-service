@@ -181,6 +181,8 @@ buildNumber.properties
 
 #### POSTGRESQL ####
 *.sql
+# Allow Flyway migration scripts
+!src/main/resources/db/migration/*.sql
 *.dump
 
 #### IDEs ####
