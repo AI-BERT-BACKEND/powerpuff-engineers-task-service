@@ -1,6 +1,38 @@
-# Nombre del Proyecto
+# Task Service
 
-> Breve descripción de una línea sobre qué hace el sistema y qué problema resuelve.
+## Descripción General
+
+Este repositorio contiene el microservicio **task-service**, parte de una plataforma diseñada para ayudar a estudiantes universitarios a organizar su tiempo de forma inteligente, equilibrando la vida académica y personal para mejorar su rendimiento y evitar el estrés.
+
+### Contexto
+Muchos estudiantes universitarios no fallan por falta de capacidad, sino por una mala gestión del tiempo y un desbalance entre la vida académica y personal. Los problemas más comunes incluyen:
+- Subestimar el tiempo real que requieren las tareas.
+- Priorizar incorrectamente (trabajar en lo urgente, no en lo importante).
+- Sobrecargar días específicos y dejar otros vacíos.
+- No integrar la vida personal (descanso, ocio, social) en la planificación.
+- Tomar decisiones reactivas en vez de estratégicas.
+
+Esto resulta en:
+- Estrés acumulado.
+- Bajo rendimiento académico.
+- Pérdida de materias.
+- Burnout estudiantil.
+
+La plataforma no es solo una lista de tareas, sino un sistema que analiza, prioriza y optimiza cómo el estudiante usa su tiempo.
+
+## Microservicio: task-service
+
+Este microservicio es responsable de la **Gestión de Tareas** y soporta las siguientes funcionalidades:
+
+- **R11:** Creación de tareas
+- **R12:** Organizador inteligente de tareas
+- **R13:** Vista de tareas como tablero Kanban o Calendario
+
+Las tres funcionalidades operan sobre el mismo objeto (la tarea) y comparten el mismo modelo de datos.
+
+## Equipo
+
+*Por definir*
 
 ---
 
@@ -22,55 +54,19 @@
 
 ---
 
-# Descripción General
-
-## Resumen Ejecutivo
-
-Descripción breve del proyecto:
-
-- Problema a resolver.
-- Solución propuesta.
-- Usuarios objetivo.
-- Impacto esperado.
-
-## Alcance
-
-### Incluye
-- Funcionalidad 1
-- Funcionalidad 2
-- Funcionalidad 3
-
-### No Incluye
-- Funcionalidades futuras
-- Restricciones del proyecto
-
----
-
-#  Equipo
-
-**Nombre del equipo**
-
-| Integrante | Rol | Responsabilidades |
-|-----------|------|------------------|
-| Sheldon Cooper | Arquitecto | Diseño del sistema |
-| Walter White | Backend | APIs y lógica |
-| Tony Stark | DevOps | Infraestructura |
-| Jesse Pinkman | Frontend | UI/UX |
-| R2-D2 | QA | Testing |
-
----
-
 # Objetivos
 
 ## Objetivo General
 
-Construir un sistema que ...
+Construir un sistema que ayude a los estudiantes universitarios a gestionar y equilibrar su tiempo académico y personal, optimizando el rendimiento y reduciendo el estrés.
 
 ## Objetivos Específicos
 
-- Objetivo 1
-- Objetivo 2
-- Objetivo 3
+- Permitir la creación y gestión eficiente de tareas académicas y personales.
+- Priorizar y organizar tareas de manera inteligente según importancia y carga de trabajo.
+- Visualizar tareas en formatos Kanban y Calendario para una mejor planificación.
+- Integrar la vida personal en la planificación académica.
+- Prevenir el burnout y mejorar el bienestar estudiantil.
 
 ---
 
@@ -78,108 +74,86 @@ Construir un sistema que ...
 
 ## Contexto
 
-Descripción del contexto.
+Los estudiantes universitarios suelen enfrentar dificultades para equilibrar sus responsabilidades académicas y personales, lo que afecta su rendimiento y bienestar.
 
 ## Problema
 
-Problema principal identificado.
+La mala gestión del tiempo y la falta de integración entre vida académica y personal llevan a estrés, bajo rendimiento y burnout.
 
 ## Dificultades Actuales
 
-- Dificultad 1
-- Dificultad 2
-- Dificultad 3
+- Subestimación del tiempo necesario para tareas.
+- Priorización incorrecta de actividades.
+- Sobrecarga de días específicos.
+- Falta de integración de actividades personales.
+- Decisiones reactivas en vez de estratégicas.
 
 ## Solución Propuesta
 
-Descripción general del enfoque.
+Un sistema inteligente que ayude a los estudiantes a planificar, priorizar y equilibrar sus tareas académicas y personales, optimizando el uso del tiempo y mejorando el bienestar general.
 
 ---
 
-#  Requerimientos
-
----
+# Requerimientos
 
 ## Requerimientos Funcionales
 
-| ID | Requerimiento | Módulo |
-|----|---------------|--------|
-| RF-01 | Login de usuarios | Seguridad |
-| RF-02 | Gestión de datos | Core |
-
----
+| ID   | Requerimiento                                         | Módulo        |
+|------|-------------------------------------------------------|---------------|
+| R11  | Crear tareas                                         | task-service  |
+| R12  | Organizar tareas de forma inteligente                 | task-service  |
+| R13  | Visualizar tareas en Kanban y Calendario              | task-service  |
 
 ## Requerimientos No Funcionales
 
-| ID | Requerimiento | Métrica |
-|----|----------------|---------|
-| RNF-01 | Disponibilidad | 99.9% |
-| RNF-02 | Tiempo respuesta | < 2s |
-| RNF-03 | Seguridad | JWT / OAuth |
+| ID     | Requerimiento         | Métrica         |
+|--------|----------------------|-----------------|
+| RNF-01 | Disponibilidad       | 99.9%           |
+| RNF-02 | Tiempo de respuesta  | < 2s            |
+| RNF-03 | Seguridad            | JWT / OAuth     |
 
 ---
 
-##  Análisis de Requerimientos
-
-- [Documento de análisis](docs/requisitos.md)
-
----
-
-#  Arquitectura
+# Arquitectura
 
 ## Arquitectura General
 
-Descripción de arquitectura usada:
-
-- Monolítica / Microservicios
+- Microservicios
 - Patrón MVC
 - Clean Architecture
-- Hexagonal (si aplica)
+- Hexagonal Architecture
+
+## Diagrama General
+
+(Agregar diagrama en docs/diagramas/contexto.png)
 
 ---
 
-#  Stack Tecnológico
+# Stack Tecnológico
 
-| Área | Tecnologías |
-|------|-------------|
-| Backend | Java 21, Spring Boot |
-| Frontend | React / Angular |
-| API | REST, OpenAPI |
-| Seguridad | Spring Security, JWT |
-| SQL | PostgreSQL |
-| NoSQL | MongoDB |
-| Testing | JUnit, Mockito |
-| DevOps | Docker, GitHub Actions |
-| Calidad | SonarCloud, JaCoCo |
+| Área      | Tecnologías                  |
+|-----------|-----------------------------|
+| Backend   | Java 21, Spring Boot        |
+| API       | REST, OpenAPI               |
+| Seguridad | Spring Security, JWT        |
+| Base de datos | PostgreSQL              |
+| Testing   | JUnit, Mockito              |
+| DevOps    | Docker, Docker Compose, GitHub Actions |
+| Calidad   | SonarCloud, JaCoCo          |
 
 ---
 
-#  Diagramas
+# Diagramas
 
-## Contexto
 - [Diagrama de contexto](docs/diagramas/contexto.png)
-
-## Casos de Uso
 - [Casos de uso](docs/diagramas/casos-uso.png)
-
-## Diagrama de Clases
 - [Diagrama de clases](docs/diagramas/clases.png)
-
-## Componentes
 - [Diagrama de componentes](docs/diagramas/componentes.png)
-
-## Entidad Relación
 - [ER Diagram](docs/diagramas/er.png)
 
-## Secuencia
-
-- [01 Registro usuario](docs/secuencia/registro.md)
-- [02 Login](docs/secuencia/login.md)
-- [03 Gestión principal](docs/secuencia/modulo.md)
-
 ---
 
-#  Gestión del Proyecto
+# Gestión del Proyecto
 
 ## Metodología
 
@@ -187,62 +161,50 @@ Descripción de arquitectura usada:
 
 ## Sprints
 
-| Sprint | Objetivo | Estado |
-|-------|----------|--------|
-| Sprint 1 | Setup proyecto | ✅ |
-| Sprint 2 | Core features | 🚧 |
+| Sprint   | Objetivo           | Estado |
+|----------|--------------------|--------|
+| Sprint 1 | Setup proyecto     | ✅     |
+| Sprint 2 | Core features      | 🚧     |
 
 ## Riesgos
 
-| Riesgo | Impacto | Mitigación |
-|--------|---------|------------|
-| Retrasos | Alto | Buffer |
-| Bugs críticos | Medio | Testing |
+| Riesgo         | Impacto | Mitigación |
+|----------------|---------|------------|
+| Retrasos       | Alto    | Buffer     |
+| Bugs críticos  | Medio   | Testing    |
 
 ---
 
-#  Pruebas
+# Pruebas y Calidad
 
 ## Estrategia
 
-- Unitarias
-- Integración
-- End to End
-- Carga
+- Pruebas unitarias
+- Pruebas de integración
+- Pruebas end-to-end
 
-## Reporte
-
-[Ver reporte pruebas](docs/testing/pruebas.md)
-
----
-
-# Cobertura
+## Cobertura
 
 Reporte generado con **JaCoCo** y analizado con **SonarCloud**
 
 | Métrica | Cubierto | Total | Cobertura |
-|---|---|---|---|
-| Líneas | 1964 | 2188 | 90% |
-| Ramas | 509 | 745 | 68% |
-| Métodos | 744 | 794 | 94% |
+|---------|----------|-------|-----------|
+| Líneas  | 1964     | 2188  | 90%       |
+| Ramas   | 509      | 745   | 68%       |
+| Métodos | 744      | 794   | 94%       |
 
 ## Calidad
 
 - Bugs: 0 críticos
-- Code Smells: X
+- Code Smells: Bajo
 - Deuda técnica: Baja
 - Quality Gate: ✅ Passed
 
 ---
 
-#  Demo
+# Demo
 
-## Video Demo
 - [Demo módulo](link-demo)
-
-## Capturas
-
-Agregar screenshots aquí.
 
 ---
 
@@ -251,8 +213,8 @@ Agregar screenshots aquí.
 ## Requisitos
 
 - Java 21
-- Docker
-- PostgreSQL
+- Maven 3.9+
+- Docker & Docker Compose
 
 ## Clonar repositorio
 
@@ -261,38 +223,74 @@ git clone https://github.com/usuario/proyecto.git
 cd proyecto
 ```
 
-## Backend
+## Opción 1: Con Docker (recomendado)
+
+Levanta PostgreSQL + la aplicación en un solo comando:
 
 ```bash
-./mvnw spring-boot:run
+# Copiar variables de entorno
+cp .env.example .env
+
+# Construir y levantar todos los servicios
+docker-compose up --build
 ```
 
-## Frontend
+La API queda disponible en `http://localhost:8080`.
+Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+Para detener:
+```bash
+docker-compose down
+```
+
+Para detener y eliminar el volumen de PostgreSQL:
+```bash
+docker-compose down -v
+```
+
+## Opción 2: Local sin Docker (H2 in-memory)
+
+No requiere base de datos externa. Los datos se pierden al reiniciar.
 
 ```bash
-npm install
-npm run dev
+mvn spring-boot:run
 ```
 
 ---
 
 # Estructura del Proyecto
 
-```bash
-src/
-docs/
-tests/
-docker/
+```
+task-service/
+├── src/
+│   ├── main/
+│   │   ├── java/com/aibert/dosw/
+│   │   │   ├── application/        # Use cases, DTOs, mappers
+│   │   │   ├── config/             # Spring Security config
+│   │   │   ├── domain/             # Ports, models, exceptions
+│   │   │   ├── entrypoints/        # REST controllers, exception handlers
+│   │   │   └── infrastructure/     # JPA adapters, entities, repositories
+│   │   └── resources/
+│   │       ├── application.yml         # Local dev (H2 in-memory)
+│   │       └── application-docker.yml  # Docker (PostgreSQL)
+│   └── test/
+│       └── java/com/aibert/dosw/   # Unit tests (Mockito)
+├── .env.example                    # Template for local Docker credentials
+├── docker-compose.yml              # PostgreSQL + app services
+├── Dockerfile                      # Multi-stage build
+└── pom.xml
 ```
 
 ---
 
-#  Referencias
+# Referencias
 
 - Documentación oficial Spring
 - PostgreSQL docs
 - OpenAPI
 - Papers / fuentes usadas
 
----
+# Evidencia Swagger
+
+![Evidencia Swagger](docs/img/captura_swagger.png)
 
