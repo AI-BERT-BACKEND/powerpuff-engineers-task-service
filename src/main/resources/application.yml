@@ -1,11 +1,25 @@
+# ============================================================
+# application.yml — single configuration file for task-service
+#
+# Available profiles (SPRING_PROFILES_ACTIVE):
+#   inmemory  — in-memory repository, no database required (default)
+#   postgres  — PostgreSQL on local Docker or Azure
+#   feign     — real communication with external microservices
+#
+# Environment variables (only required when the corresponding profile is active):
+#   DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD, DB_SSL_MODE
+#   SUBJECT_SERVICE_URL, ACADEMIC_SERVICE_URL, AUTH_SERVICE_URL
+# ============================================================
+
+# -----------------------------------------------------------
+# Base configuration (applies to all profiles)
+# -----------------------------------------------------------
 server:
-  port: 8080
+  port: 8083
 
 spring:
   application:
     name: task-service
-  # Perfil por defecto: in-memory (no requiere base de datos).
-  # Para producción/Azure sobreescribir con: SPRING_PROFILES_ACTIVE=postgres
   profiles:
     active: inmemory
 
@@ -17,3 +31,92 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     enabled: true
+
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 5000
+        read-timeout: 10000
+        logger-level: BASIC
+
+---
+# -----------------------------------------------------------
+# Profile: postgres
+# Use for local Docker deployment and Azure.
+# -----------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: postgres
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:taskdb}?sslmode=${DB_SSL_MODE:disable}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+---
+# -----------------------------------------------------------
+# Profile: feign
+# Enables real communication with external microservices.
+#
+# Required environment variables:
+#   SUBJECT_SERVICE_URL   — base URL for subject-service  (e.g. http://subject-service:8081)
+#   ACADEMIC_SERVICE_URL  — base URL for academic-service (e.g. http://academic-service:8082)
+#   AUTH_SERVICE_URL      — base URL for auth-service     (e.g. http://auth-service:8080)
+# -----------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: feign
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+
+clients:
+  subject-service:
+    url: ${SUBJECT_SERVICE_URL:http://localhost:8081}
+  academic-service:
+    url: ${ACADEMIC_SERVICE_URL:http://localhost:8082}
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8080}
+
+feign:
+  client:
+    config:
+      subject-service:
+        connect-timeout: 5000
+        read-timeout: 10000
+        logger-level: BASIC
+      academic-service:
+        connect-timeout: 5000
+        read-timeout: 10000
+        logger-level: BASIC
+      auth-service:
+        connect-timeout: 5000
+        read-timeout: 10000
+        logger-level: BASIC
