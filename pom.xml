@@ -19,6 +19,14 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <sonar.projectKey>task-service</sonar.projectKey>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.exclusions>
+            **/TaskServiceApplication.java,
+            **/dto/**,
+            **/config/**,
+            **/domain/model/**,
+            **/domain/exceptions/**
+        </sonar.exclusions>
         <spring-cloud.version>2024.0.1</spring-cloud.version>
     </properties>
 
@@ -138,6 +146,51 @@
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <excludes>
+                                        <exclude>com/aibert/dosw/TaskServiceApplication*</exclude>
+                                        <exclude>com/aibert/dosw/application/dto/**</exclude>
+                                        <exclude>com/aibert/dosw/application/dto/request/**</exclude>
+                                        <exclude>com/aibert/dosw/application/dto/response/**</exclude>
+                                        <exclude>com/aibert/dosw/config/**</exclude>
+                                        <exclude>com/aibert/dosw/domain/model/**</exclude>
+                                        <exclude>com/aibert/dosw/domain/exceptions/**</exclude>
+                                        <exclude>com/aibert/dosw/infrastructure/adapters/persistence/entity/**</exclude>
+                                    </excludes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
