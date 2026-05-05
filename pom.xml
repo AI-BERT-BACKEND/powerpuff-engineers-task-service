@@ -181,6 +181,19 @@
                         <id>report</id>
                         <phase>verify</phase>
                         <goals><goal>report</goal></goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>com/aibert/dosw/TaskServiceApplication*</exclude>
+                                <exclude>com/aibert/dosw/TaskApplication*</exclude>
+                                <exclude>com/aibert/dosw/application/dto/**</exclude>
+                                <exclude>com/aibert/dosw/application/dto/request/**</exclude>
+                                <exclude>com/aibert/dosw/application/dto/response/**</exclude>
+                                <exclude>com/aibert/dosw/config/**</exclude>
+                                <exclude>com/aibert/dosw/domain/model/**</exclude>
+                                <exclude>com/aibert/dosw/domain/exceptions/**</exclude>
+                                <exclude>com/aibert/dosw/infrastructure/adapters/persistence/entity/**</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>
