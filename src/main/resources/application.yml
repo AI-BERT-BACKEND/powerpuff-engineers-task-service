@@ -15,7 +15,7 @@
 # Base configuration (applies to all profiles)
 # -----------------------------------------------------------
 server:
-  port: 8083
+  port: 8084
 
 spring:
   application:
@@ -93,9 +93,10 @@ spring:
 # Enables real communication with external microservices.
 #
 # Required environment variables:
-#   SUBJECT_SERVICE_URL   — base URL for subject-service  (e.g. http://subject-service:8081)
-#   ACADEMIC_SERVICE_URL  — base URL for academic-service (e.g. http://academic-service:8082)
-#   AUTH_SERVICE_URL      — base URL for auth-service     (e.g. http://auth-service:8080)
+#   ACADEMIC_SERVICE_URL  — base URL for academic-service (e.g. http://academic-service:8083)
+#
+# NOTE: task-service does NOT call auth-service.
+# The API Gateway validates the JWT and injects X-User-Id header.
 # -----------------------------------------------------------
 spring:
   config:
@@ -107,25 +108,13 @@ spring:
         enabled: true
 
 clients:
-  subject-service:
-    url: ${SUBJECT_SERVICE_URL:http://localhost:8081}
   academic-service:
-    url: ${ACADEMIC_SERVICE_URL:http://localhost:8082}
-  auth-service:
-    url: ${AUTH_SERVICE_URL:http://localhost:8080}
+    url: ${ACADEMIC_SERVICE_URL:http://localhost:8083}
 
 feign:
   client:
     config:
-      subject-service:
-        connect-timeout: 5000
-        read-timeout: 10000
-        logger-level: BASIC
       academic-service:
-        connect-timeout: 5000
-        read-timeout: 10000
-        logger-level: BASIC
-      auth-service:
         connect-timeout: 5000
         read-timeout: 10000
         logger-level: BASIC

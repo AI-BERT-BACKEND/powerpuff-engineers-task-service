@@ -34,9 +34,6 @@ public class CreateTaskRequest {
     @NotNull(message = "La prioridad es requerida")
     private TaskPriority priority;
 
-    @NotBlank(message = "El ID del estudiante es requerido")
-    private String studentId;
-
     @NotBlank(message = "La materia es requerida")
     private String subjectId;
 }

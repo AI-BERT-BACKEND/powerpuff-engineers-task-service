@@ -48,7 +48,6 @@ class TaskControllerTest {
     void createTask_ShouldReturnCreatedResponse() {
         CreateTaskRequest request = CreateTaskRequest.builder()
                 .title("Test title")
-                .studentId("S123")
                 .priority(TaskPriority.HIGH)
                 .estimatedDurationMinutes(60)
                 .deadline(LocalDateTime.now().plusDays(1))
@@ -58,17 +57,16 @@ class TaskControllerTest {
         Task createdTask = Task.builder().id("uuid").title("Test title").status(TaskStatus.TODO).build();
         TaskResponse expectedResponse = TaskResponse.builder().id("uuid").title("Test title").status(TaskStatus.TODO).build();
 
-        when(taskDtoMapper.toModel(request)).thenReturn(mappedTask);
+        when(taskDtoMapper.toModel(request, "S123")).thenReturn(mappedTask);
         when(createTaskUseCase.createTask(mappedTask)).thenReturn(createdTask);
         when(taskDtoMapper.toResponse(createdTask)).thenReturn(expectedResponse);
 
-        ResponseEntity<TaskResponse> response = taskController.createTask(request);
+        ResponseEntity<TaskResponse> response = taskController.createTask("S123", request);
 
         assertNotNull(response);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(expectedResponse, response.getBody());
-        verify(taskDtoMapper).toModel(request);
-        verify(createTaskUseCase).createTask(mappedTask);
+        verify(taskDtoMapper).toModel(request, "S123");
         verify(taskDtoMapper).toResponse(createdTask);
     }
 

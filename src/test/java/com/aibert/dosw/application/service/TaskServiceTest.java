@@ -1,9 +1,7 @@
 package com.aibert.dosw.application.service;
 
 import com.aibert.dosw.application.dto.SubjectDTO;
-import com.aibert.dosw.application.dto.TokenValidationDTO;
 import com.aibert.dosw.infrastructure.external.AcademicServiceClient;
-import com.aibert.dosw.infrastructure.external.AuthServiceClient;
 import feign.FeignException;
 import feign.Request;
 import org.junit.jupiter.api.Test;
@@ -24,9 +22,6 @@ class TaskServiceTest {
 
     @Mock
     private AcademicServiceClient academicServiceClient;
-
-    @Mock
-    private AuthServiceClient authServiceClient;
 
     @InjectMocks
     private TaskService taskService;
@@ -85,36 +80,5 @@ class TaskServiceTest {
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void validateToken_WhenTokenValid_ShouldReturnValidResponse() {
-        TokenValidationDTO.Response validResponse = TokenValidationDTO.Response.builder()
-                .valid(true)
-                .userId("user-1")
-                .roles(List.of("ROLE_STUDENT"))
-                .build();
-        when(authServiceClient.validateToken(any())).thenReturn(validResponse);
-
-        TokenValidationDTO.Response result = taskService.validateToken("Bearer eyJ.valid.token");
-
-        assertTrue(result.isValid());
-        assertEquals("user-1", result.getUserId());
-        assertEquals(List.of("ROLE_STUDENT"), result.getRoles());
-    }
-
-    @Test
-    void validateToken_WhenFallbackActive_ShouldReturnInvalidResponse() {
-        TokenValidationDTO.Response invalidResponse = TokenValidationDTO.Response.builder()
-                .valid(false)
-                .userId(null)
-                .roles(List.of())
-                .build();
-        when(authServiceClient.validateToken(any())).thenReturn(invalidResponse);
-
-        TokenValidationDTO.Response result = taskService.validateToken("Bearer bad.token");
-
-        assertFalse(result.isValid());
-        assertNull(result.getUserId());
     }
 }

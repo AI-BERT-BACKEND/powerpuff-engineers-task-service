@@ -1,6 +1,7 @@
 package com.aibert.dosw.infrastructure.adapters;
 
-import com.aibert.dosw.infrastructure.external.SubjectServiceClient;
+import com.aibert.dosw.application.dto.SubjectDTO;
+import com.aibert.dosw.infrastructure.external.AcademicServiceClient;
 import feign.FeignException;
 import feign.Request;
 import org.junit.jupiter.api.Test;
@@ -19,21 +20,20 @@ import static org.mockito.Mockito.*;
 class SubjectServiceFeignAdapterTest {
 
     @Mock
-    private SubjectServiceClient subjectServiceClient;
+    private AcademicServiceClient academicServiceClient;
 
     @InjectMocks
     private SubjectServiceFeignAdapter adapter;
 
     @Test
     void exists_WhenSubjectFound_ShouldReturnTrue() {
-        SubjectServiceClient.SubjectResponse response =
-                new SubjectServiceClient.SubjectResponse("MATH-101", "Mathematics");
-        when(subjectServiceClient.getSubjectById("MATH-101")).thenReturn(response);
+        SubjectDTO response = SubjectDTO.builder().id("MATH-101").name("Mathematics").build();
+        when(academicServiceClient.getSubjectById("MATH-101")).thenReturn(response);
 
         boolean result = adapter.exists("MATH-101");
 
         assertTrue(result);
-        verify(subjectServiceClient).getSubjectById("MATH-101");
+        verify(academicServiceClient).getSubjectById("MATH-101");
     }
 
     @Test
@@ -42,7 +42,7 @@ class SubjectServiceFeignAdapterTest {
                 Request.HttpMethod.GET, "/api/subjects/UNKNOWN",
                 Map.of(), null, StandardCharsets.UTF_8, null);
 
-        when(subjectServiceClient.getSubjectById("UNKNOWN"))
+        when(academicServiceClient.getSubjectById("UNKNOWN"))
                 .thenThrow(new FeignException.NotFound("Not Found", dummyRequest, null, Map.of()));
 
         boolean result = adapter.exists("UNKNOWN");
@@ -56,7 +56,7 @@ class SubjectServiceFeignAdapterTest {
                 Request.HttpMethod.GET, "/api/subjects/MATH-101",
                 Map.of(), null, StandardCharsets.UTF_8, null);
 
-        when(subjectServiceClient.getSubjectById("MATH-101"))
+        when(academicServiceClient.getSubjectById("MATH-101"))
                 .thenThrow(new FeignException.ServiceUnavailable("503", dummyRequest, null, Map.of()));
 
         assertThrows(FeignException.class, () -> adapter.exists("MATH-101"));

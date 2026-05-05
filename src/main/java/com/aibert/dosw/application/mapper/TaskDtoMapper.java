@@ -8,14 +8,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class TaskDtoMapper {
 
-    public Task toModel(CreateTaskRequest request) {
+    public Task toModel(CreateTaskRequest request, String studentId) {
         return Task.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .estimatedDurationMinutes(request.getEstimatedDurationMinutes())
                 .deadline(request.getDeadline())
                 .priority(request.getPriority())
-                .studentId(request.getStudentId())
+                .studentId(studentId)
                 .subjectId(request.getSubjectId())
                 .build();
     }

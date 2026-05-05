@@ -30,11 +30,10 @@ class TaskDtoMapperTest {
                 .estimatedDurationMinutes(90)
                 .deadline(deadline)
                 .priority(TaskPriority.HIGH)
-                .studentId("S1")
                 .subjectId("MATH-101")
                 .build();
 
-        Task result = mapper.toModel(request);
+        Task result = mapper.toModel(request, "S1");
 
         assertEquals("Test Task", result.getTitle());
         assertEquals("Description", result.getDescription());
