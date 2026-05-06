@@ -17,7 +17,9 @@ public class SecurityConfig {
             "/api-docs/**",
             "/api-docs.yaml",
             "/v3/api-docs/**",
-            "/api/**"
+            "/api/**",
+            "/actuator/health",
+            "/actuator/info"
     };
 
     @Bean
