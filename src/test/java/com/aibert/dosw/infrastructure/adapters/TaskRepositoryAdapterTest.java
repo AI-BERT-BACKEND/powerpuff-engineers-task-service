@@ -3,143 +3,157 @@ package com.aibert.dosw.infrastructure.adapters;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
-import org.junit.jupiter.api.BeforeEach;
+import com.aibert.dosw.infrastructure.adapters.persistence.entity.TaskEntity;
+import com.aibert.dosw.infrastructure.adapters.persistence.mapper.TaskEntityMapper;
+import com.aibert.dosw.infrastructure.adapters.persistence.repository.TaskJpaRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.*;
 
-class InMemoryTaskRepositoryTest {
+@ExtendWith(MockitoExtension.class)
+class TaskRepositoryAdapterTest {
 
-    private InMemoryTaskRepository repository;
+    @Mock
+    private TaskJpaRepository jpaRepository;
 
-    @BeforeEach
-    void setUp() {
-        repository = new InMemoryTaskRepository();
+    @Mock
+    private TaskEntityMapper mapper;
+
+    @InjectMocks
+    private TaskRepositoryAdapter adapter;
+
+    private final LocalDateTime deadline = LocalDateTime.now().plusDays(3);
+
+    private Task buildTask(String id) {
+        return Task.builder()
+                .id(id).studentId("S1").subjectId("MATH-101")
+                .title("Task").status(TaskStatus.TODO).priority(TaskPriority.MEDIUM)
+                .estimatedDurationMinutes(60).deadline(deadline).build();
+    }
+
+    private TaskEntity buildEntity(String id) {
+        return TaskEntity.builder()
+                .id(id).studentId("S1").subjectId("MATH-101")
+                .title("Task").status(TaskStatus.TODO).priority(TaskPriority.MEDIUM)
+                .estimatedDurationMinutes(60).deadline(deadline).build();
     }
 
     @Test
-    void save_ShouldAssignIdAndPersistTask() {
-        Task task = Task.builder()
-                .title("Domain Task")
-                .status(TaskStatus.TODO)
-                .priority(TaskPriority.MEDIUM)
-                .studentId("S1")
-                .subjectId("MATH-101")
-                .build();
+    void save_WhenTaskHasNoId_ShouldGenerateAndPersist() {
+        Task task = buildTask(null);
+        task.setId(null);
+        TaskEntity entity = buildEntity("generated-id");
+        Task saved = buildTask("generated-id");
 
-        Task result = repository.save(task);
+        when(mapper.toEntity(any())).thenReturn(entity);
+        when(jpaRepository.save(entity)).thenReturn(entity);
+        when(mapper.toDomain(entity)).thenReturn(saved);
+
+        Task result = adapter.save(task);
 
         assertNotNull(result.getId());
-        assertEquals(TaskStatus.TODO, result.getStatus());
+        verify(jpaRepository).save(entity);
     }
 
     @Test
-    void save_WhenIdAlreadySet_ShouldPreserveId() {
-        Task task = Task.builder()
-                .id("existing-id")
-                .title("Task")
-                .studentId("S1")
-                .subjectId("MATH-101")
-                .status(TaskStatus.TODO)
-                .priority(TaskPriority.LOW)
-                .build();
+    void save_WhenTaskAlreadyHasId_ShouldPreserveId() {
+        Task task = buildTask("existing-id");
+        TaskEntity entity = buildEntity("existing-id");
+        Task saved = buildTask("existing-id");
 
-        Task result = repository.save(task);
+        when(mapper.toEntity(task)).thenReturn(entity);
+        when(jpaRepository.save(entity)).thenReturn(entity);
+        when(mapper.toDomain(entity)).thenReturn(saved);
+
+        Task result = adapter.save(task);
 
         assertEquals("existing-id", result.getId());
     }
 
     @Test
-    void findByStudentId_ShouldReturnOnlyMatchingTasks() {
-        repository.save(task("S1", "MATH", "T1"));
-        repository.save(task("S1", "PHYS", "T2"));
-        repository.save(task("S2", "MATH", "T3"));
+    void existsDuplicate_ShouldDelegateToJpaRepository() {
+        when(jpaRepository.existsByStudentIdAndSubjectIdAndTitleIgnoreCase("S1", "MATH-101", "Task")).thenReturn(true);
 
-        List<Task> result = repository.findByStudentId("S1");
+        boolean result = adapter.existsDuplicate("S1", "MATH-101", "Task");
 
-        assertEquals(2, result.size());
-        assertTrue(result.stream().allMatch(t -> "S1".equals(t.getStudentId())));
+        assertTrue(result);
     }
 
     @Test
-    void existsDuplicate_ShouldDetectCaseInsensitiveDuplicates() {
-        repository.save(task("S1", "MATH", "My Task"));
+    void findByStudentId_ShouldReturnMappedTasks() {
+        TaskEntity entity = buildEntity("task-1");
+        Task task = buildTask("task-1");
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entity));
+        when(mapper.toDomain(entity)).thenReturn(task);
 
-        assertTrue(repository.existsDuplicate("S1", "MATH", "my task"));
-        assertFalse(repository.existsDuplicate("S1", "MATH", "Other Task"));
-        assertFalse(repository.existsDuplicate("S2", "MATH", "My Task"));
+        List<Task> result = adapter.findByStudentId("S1");
+
+        assertEquals(1, result.size());
+        assertEquals("task-1", result.get(0).getId());
     }
 
     @Test
-    void findById_ShouldReturnPresentWhenExists() {
-        Task saved = repository.save(task("S1", "MATH", "T1"));
+    void findById_WhenExists_ShouldReturnMappedTask() {
+        TaskEntity entity = buildEntity("task-1");
+        Task task = buildTask("task-1");
+        when(jpaRepository.findById("task-1")).thenReturn(Optional.of(entity));
+        when(mapper.toDomain(entity)).thenReturn(task);
 
-        Optional<Task> result = repository.findById(saved.getId());
+        Optional<Task> result = adapter.findById("task-1");
 
         assertTrue(result.isPresent());
-        assertEquals(saved.getId(), result.get().getId());
+        assertEquals("task-1", result.get().getId());
     }
 
     @Test
-    void findById_ShouldReturnEmptyWhenNotFound() {
-        Optional<Task> result = repository.findById("non-existent");
+    void findById_WhenNotExists_ShouldReturnEmpty() {
+        when(jpaRepository.findById("missing")).thenReturn(Optional.empty());
+
+        Optional<Task> result = adapter.findById("missing");
 
         assertTrue(result.isEmpty());
     }
 
     @Test
-    void findByStudentIdWithFilters_ShouldFilterByStatus() {
-        Task todo = task("S1", "MATH", "T1");
-        todo.setStatus(TaskStatus.TODO);
-        todo.setDeadline(LocalDateTime.now().plusDays(3));
+    void saveAll_ShouldMapAndPersistAllTasks() {
+        Task task = buildTask("task-1");
+        TaskEntity entity = buildEntity("task-1");
+        when(mapper.toEntity(task)).thenReturn(entity);
+        when(jpaRepository.saveAll(anyList())).thenReturn(List.of(entity));
+        when(mapper.toDomain(entity)).thenReturn(task);
 
-        Task done = task("S1", "PHYS", "T2");
-        done.setStatus(TaskStatus.COMPLETED);
-        done.setDeadline(LocalDateTime.now().plusDays(3));
+        List<Task> result = adapter.saveAll(List.of(task));
 
-        repository.save(todo);
-        repository.save(done);
+        assertEquals(1, result.size());
+        verify(jpaRepository).saveAll(anyList());
+    }
 
-        List<Task> result = repository.findByStudentIdWithFilters("S1", TaskStatus.TODO, null, null);
+    @Test
+    void findByStudentIdWithFilters_WhenStatusFilter_ShouldFilterResults() {
+        TaskEntity todoEntity = buildEntity("task-1");
+        TaskEntity doneEntity = buildEntity("task-2");
+        doneEntity.setStatus(TaskStatus.COMPLETED);
+
+        Task todoTask = buildTask("task-1");
+
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(todoEntity, doneEntity));
+        when(mapper.toDomain(todoEntity)).thenReturn(todoTask);
+
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", TaskStatus.TODO, null, null);
 
         assertEquals(1, result.size());
         assertEquals(TaskStatus.TODO, result.get(0).getStatus());
     }
-
-    @Test
-    void findByStudentIdWithFilters_ShouldFilterByDateRange() {
-        Task early = task("S1", "MATH", "T1");
-        early.setDeadline(LocalDateTime.now().plusDays(1));
-        early.setStatus(TaskStatus.TODO);
-
-        Task late = task("S1", "PHYS", "T2");
-        late.setDeadline(LocalDateTime.now().plusDays(10));
-        late.setStatus(TaskStatus.TODO);
-
-        repository.save(early);
-        repository.save(late);
-
-        LocalDateTime start = LocalDateTime.now();
-        LocalDateTime end   = LocalDateTime.now().plusDays(5);
-
-        List<Task> result = repository.findByStudentIdWithFilters("S1", null, start, end);
-
-        assertEquals(1, result.size());
-    }
-
-    private Task task(String studentId, String subjectId, String title) {
-        return Task.builder()
-                .studentId(studentId)
-                .subjectId(subjectId)
-                .title(title)
-                .status(TaskStatus.TODO)
-                .priority(TaskPriority.MEDIUM)
-                .deadline(LocalDateTime.now().plusDays(5))
-                .estimatedDurationMinutes(60)
-                .build();
-    }
 }
+
