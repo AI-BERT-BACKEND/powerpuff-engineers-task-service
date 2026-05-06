@@ -118,3 +118,19 @@ feign:
         connect-timeout: 5000
         read-timeout: 10000
         logger-level: BASIC
+
+
+---
+spring:
+  config:
+    activate:
+      on-profile: qa
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
