@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
@@ -93,5 +94,91 @@ class TaskOrganizerServiceImplTest {
         assertEquals("3", result.get(0).getId());
         assertEquals("1", result.get(1).getId());
         assertEquals("2", result.get(2).getId());
+    }
+
+    @Test
+    void getOrganizedTasks_WhenDeadlineIsNull_ShouldSkipEscalationAndNotSave() {
+        Task taskNullDeadline = Task.builder()
+                .id("1").title("Task no deadline")
+                .priority(TaskPriority.LOW)
+                .deadline(null)
+                .subjectId("MATH")
+                .build();
+
+        when(taskRepositoryPort.findByStudentId("student1")).thenReturn(List.of(taskNullDeadline));
+
+        taskOrganizerService.getOrganizedTasks("student1", SortCriteriaEnum.PRIORITY);
+
+        verify(taskRepositoryPort, never()).saveAll(anyList());
+        assertEquals(TaskPriority.LOW, taskNullDeadline.getPriority());
+    }
+
+    @Test
+    void getOrganizedTasks_WhenPastDeadline_ShouldNotEscalate() {
+        Task pastTask = Task.builder()
+                .id("1").title("Past deadline task")
+                .priority(TaskPriority.MEDIUM)
+                .deadline(LocalDateTime.now().minusHours(5))
+                .subjectId("MATH")
+                .build();
+
+        when(taskRepositoryPort.findByStudentId("student1")).thenReturn(List.of(pastTask));
+
+        taskOrganizerService.getOrganizedTasks("student1", SortCriteriaEnum.PRIORITY);
+
+        verify(taskRepositoryPort, never()).saveAll(anyList());
+        assertEquals(TaskPriority.MEDIUM, pastTask.getPriority());
+    }
+
+    @Test
+    void getOrganizedTasks_WhenUrgentButAlreadyHighPriority_ShouldNotEscalate() {
+        Task highTask = Task.builder()
+                .id("1").title("High priority urgent")
+                .priority(TaskPriority.HIGH)
+                .deadline(LocalDateTime.now().plusHours(12))
+                .subjectId("MATH")
+                .build();
+
+        when(taskRepositoryPort.findByStudentId("student1")).thenReturn(List.of(highTask));
+
+        taskOrganizerService.getOrganizedTasks("student1", SortCriteriaEnum.PRIORITY);
+
+        verify(taskRepositoryPort, never()).saveAll(anyList());
+        assertEquals(TaskPriority.HIGH, highTask.getPriority());
+    }
+
+    @Test
+    void getOrganizedTasks_WhenUrgentButCriticalPriority_ShouldNotEscalate() {
+        Task criticalTask = Task.builder()
+                .id("1").title("Critical urgent task")
+                .priority(TaskPriority.CRITICAL)
+                .deadline(LocalDateTime.now().plusHours(12))
+                .subjectId("MATH")
+                .build();
+
+        when(taskRepositoryPort.findByStudentId("student1")).thenReturn(List.of(criticalTask));
+
+        taskOrganizerService.getOrganizedTasks("student1", SortCriteriaEnum.PRIORITY);
+
+        verify(taskRepositoryPort, never()).saveAll(anyList());
+        assertEquals(TaskPriority.CRITICAL, criticalTask.getPriority());
+    }
+
+    @Test
+    void getOrganizedTasks_WhenNullPriority_ShouldTreatAsLowestScore() {
+        Task nullPriorityTask = Task.builder()
+                .id("1").title("Null priority task")
+                .priority(null)
+                .deadline(LocalDateTime.now().plusDays(5))
+                .subjectId("MATH")
+                .build();
+
+        when(taskRepositoryPort.findByStudentId("student1")).thenReturn(List.of(nullPriorityTask));
+
+        List<Task> result = taskOrganizerService.getOrganizedTasks("student1", SortCriteriaEnum.PRIORITY);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(taskRepositoryPort, never()).saveAll(anyList());
     }
 }

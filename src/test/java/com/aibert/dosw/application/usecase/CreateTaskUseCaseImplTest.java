@@ -1,5 +1,7 @@
 package com.aibert.dosw.application.usecase;
 
+import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
+import com.aibert.dosw.domain.exceptions.TaskConflictException;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
@@ -81,5 +83,34 @@ class CreateTaskUseCaseImplTest {
 
         assertEquals(TaskStatus.IN_PROGRESS, result.getStatus());
         verify(taskRepositoryPort, times(1)).save(newTask);
+    }
+
+    @Test
+    void createTask_WhenSubjectNotFound_ShouldThrowSubjectNotFoundException() {
+        Task task = Task.builder()
+                .title("Task")
+                .studentId("S123")
+                .subjectId("UNKNOWN")
+                .build();
+
+        when(subjectValidationPort.exists("UNKNOWN")).thenReturn(false);
+
+        assertThrows(SubjectNotFoundException.class, () -> createTaskUseCase.createTask(task));
+        verify(taskRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    void createTask_WhenDuplicateExists_ShouldThrowTaskConflictException() {
+        Task task = Task.builder()
+                .title("Dup Task")
+                .studentId("S123")
+                .subjectId("MATH-101")
+                .build();
+
+        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Dup Task")).thenReturn(true);
+
+        assertThrows(TaskConflictException.class, () -> createTaskUseCase.createTask(task));
+        verify(taskRepositoryPort, never()).save(any());
     }
 }

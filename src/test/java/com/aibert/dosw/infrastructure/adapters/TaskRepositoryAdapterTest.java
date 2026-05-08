@@ -155,5 +155,78 @@ class TaskRepositoryAdapterTest {
         assertEquals(1, result.size());
         assertEquals(TaskStatus.TODO, result.get(0).getStatus());
     }
+
+    @Test
+    void save_WhenTaskIdIsBlank_ShouldGenerateNewId() {
+        Task task = buildTask("   ");
+        TaskEntity entity = buildEntity("new-id");
+        Task saved = buildTask("new-id");
+
+        when(mapper.toEntity(any())).thenReturn(entity);
+        when(jpaRepository.save(entity)).thenReturn(entity);
+        when(mapper.toDomain(entity)).thenReturn(saved);
+
+        Task result = adapter.save(task);
+
+        assertNotNull(result.getId());
+        verify(jpaRepository).save(entity);
+    }
+
+    @Test
+    void saveAll_WhenTaskHasNoId_ShouldGenerateId() {
+        Task task = buildTask(null);
+        task.setId(null);
+        TaskEntity entity = buildEntity("generated");
+        Task saved = buildTask("generated");
+
+        when(mapper.toEntity(any())).thenReturn(entity);
+        when(jpaRepository.saveAll(anyList())).thenReturn(List.of(entity));
+        when(mapper.toDomain(entity)).thenReturn(saved);
+
+        List<Task> result = adapter.saveAll(List.of(task));
+
+        assertEquals(1, result.size());
+        verify(jpaRepository).saveAll(anyList());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WithDateRange_ShouldIncludeMatchingTasks() {
+        LocalDateTime start = LocalDateTime.now().minusDays(1);
+        LocalDateTime end = LocalDateTime.now().plusDays(10);
+        TaskEntity entity = buildEntity("task-1");
+        Task task = buildTask("task-1");
+
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entity));
+        when(mapper.toDomain(entity)).thenReturn(task);
+
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, start, end);
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenDeadlineNullAndStartDateFilter_ShouldExclude() {
+        TaskEntity entityNoDeadline = buildEntity("task-no-deadline");
+        entityNoDeadline.setDeadline(null);
+
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entityNoDeadline));
+
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null,
+                LocalDateTime.now().minusDays(1), null);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenDeadlineAfterEndDate_ShouldExclude() {
+        TaskEntity entity = buildEntity("task-1"); // deadline = now+3, end = now+1
+        LocalDateTime endDate = LocalDateTime.now().plusDays(1);
+
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entity));
+
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, null, endDate);
+
+        assertEquals(0, result.size());
+    }
 }
 
