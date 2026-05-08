@@ -131,6 +131,30 @@ class InMemoryTaskRepositoryTest {
         assertEquals(1, result.size());
     }
 
+    @Test
+    void saveAll_ShouldPersistAllTasksAndAssignIds() {
+        List<Task> tasks = List.of(
+                task("S1", "MATH", "T-A"),
+                task("S1", "PHYS", "T-B"),
+                task("S2", "CHEM", "T-C")
+        );
+
+        List<Task> saved = repository.saveAll(tasks);
+
+        assertEquals(3, saved.size());
+        saved.forEach(t -> assertNotNull(t.getId()));
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WithNoFilters_ShouldReturnAllStudentTasks() {
+        repository.save(task("S9", "MATH", "X1"));
+        repository.save(task("S9", "PHYS", "X2"));
+
+        List<Task> result = repository.findByStudentIdWithFilters("S9", null, null, null);
+
+        assertEquals(2, result.size());
+    }
+
     private Task task(String studentId, String subjectId, String title) {
         return Task.builder()
                 .studentId(studentId)

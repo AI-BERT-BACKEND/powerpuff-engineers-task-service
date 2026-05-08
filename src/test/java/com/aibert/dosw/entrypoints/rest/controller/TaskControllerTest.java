@@ -140,4 +140,53 @@ class TaskControllerTest {
         assertEquals(1, body.size());
         verify(getTasksForViewUseCase).getCalendarView("S2", TaskStatus.TODO, start, end);
     }
+
+    @Test
+    void getTasks_WithDefaultView_ShouldReturnSortedList() {
+        Task t = Task.builder().id("3").status(TaskStatus.TODO).build();
+        TaskResponse tr = TaskResponse.builder().id("3").status(TaskStatus.TODO).build();
+
+        when(taskOrganizerUseCase.getOrganizedTasks("S3", null)).thenReturn(List.of(t));
+        when(taskDtoMapper.toResponse(t)).thenReturn(tr);
+
+        ResponseEntity<?> response = taskController.getTasks("S3", null, null, null, null, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<TaskResponse> body = (List<TaskResponse>) response.getBody();
+        assertEquals(1, body.size());
+        verify(taskOrganizerUseCase).getOrganizedTasks("S3", null);
+    }
+
+    @Test
+    void getTasksByStudentId_ShouldReturnOkWithList() {
+        Task t = Task.builder().id("10").studentId("S4").status(TaskStatus.IN_PROGRESS).build();
+        TaskResponse tr = TaskResponse.builder().id("10").status(TaskStatus.IN_PROGRESS).build();
+
+        when(getTasksUseCase.getTasksByStudentId("S4")).thenReturn(List.of(t));
+        when(taskDtoMapper.toResponse(t)).thenReturn(tr);
+
+        ResponseEntity<List<TaskResponse>> response = taskController.getTasksByStudentId("S4");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        verify(getTasksUseCase).getTasksByStudentId("S4");
+    }
+
+    @Test
+    void organizeTasks_ShouldReturnOkWithOrganizedTasks() {
+        Task t = Task.builder().id("20").studentId("S5").status(TaskStatus.TODO).build();
+        TaskResponse tr = TaskResponse.builder().id("20").status(TaskStatus.TODO).build();
+
+        when(organizeTasksUseCase.organizeTasksForStudent("S5")).thenReturn(List.of(t));
+        when(taskDtoMapper.toResponse(t)).thenReturn(tr);
+
+        ResponseEntity<List<TaskResponse>> response = taskController.organizeTasks("S5");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        verify(organizeTasksUseCase).organizeTasksForStudent("S5");
+    }
 }
