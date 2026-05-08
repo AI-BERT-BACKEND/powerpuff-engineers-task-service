@@ -123,10 +123,6 @@ Un sistema inteligente que ayude a los estudiantes a planificar, priorizar y equ
 - Clean Architecture
 - Hexagonal Architecture
 
-## Diagrama General
-
-(Agregar diagrama en docs/diagramas/contexto.png)
-
 ---
 
 # Stack Tecnológico
@@ -140,16 +136,6 @@ Un sistema inteligente que ayude a los estudiantes a planificar, priorizar y equ
 | Testing   | JUnit, Mockito              |
 | DevOps    | Docker, Docker Compose, GitHub Actions |
 | Calidad   | SonarCloud, JaCoCo          |
-
----
-
-# Diagramas
-
-- [Diagrama de contexto](docs/diagramas/contexto.png)
-- [Casos de uso](docs/diagramas/casos-uso.png)
-- [Diagrama de clases](docs/diagramas/clases.png)
-- [Diagrama de componentes](docs/diagramas/componentes.png)
-- [ER Diagram](docs/diagramas/er.png)
 
 ---
 

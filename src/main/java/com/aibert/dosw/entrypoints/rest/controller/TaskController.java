@@ -40,7 +40,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
-@Tag(name = "Tareas", description = "Endpoints de gestión de tareas")
+@Tag(name = "Tasks", description = "Task management endpoints")
 public class TaskController {
 
     private final CreateTaskUseCase createTaskUseCase;
@@ -52,11 +52,11 @@ public class TaskController {
     private final TaskDtoMapper taskDtoMapper;
 
     @PostMapping
-    @Operation(summary = "Crear una nueva tarea",
-            description = "Crea una nueva tarea con los detalles proporcionados y le asigna un estado inicial.")
+    @Operation(summary = "Create a new task",
+            description = "Creates a new task with the provided details and assigns an initial status.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Tarea creada exitosamente"),
-            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos")
+            @ApiResponse(responseCode = "201", description = "Task created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data")
     })
     public ResponseEntity<TaskResponse> createTask(
             @RequestHeader("X-User-Id") String userId,
@@ -67,9 +67,9 @@ public class TaskController {
     }
 
     @GetMapping
-    @Operation(summary = "Obtener tareas (R12 y R13)",
-            description = "Sin 'view': retorna tareas ordenadas (R12). Con 'view=kanban': agrupadas por estado. Con 'view=calendar': filtradas por fecha/estado.")
-    @ApiResponse(responseCode = "200", description = "Lista de tareas obtenida exitosamente")
+    @Operation(summary = "Get tasks (R12 and R13)",
+            description = "Without 'view': returns sorted tasks (R12). With 'view=kanban': grouped by status. With 'view=calendar': filtered by date/status.")
+    @ApiResponse(responseCode = "200", description = "Task list retrieved successfully")
     public ResponseEntity<?> getTasks(
             @RequestHeader("X-User-Id") String studentId,
             @RequestParam(required = false) SortCriteriaEnum sortBy,
@@ -103,12 +103,12 @@ public class TaskController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Actualizar estado de una tarea (R13 - AC2, AC3)",
-            description = "Actualiza el estado de la tarea. Al marcar como COMPLETED, registra automáticamente completedAt.")
+    @Operation(summary = "Update task status (R13 - AC2, AC3)",
+            description = "Updates the task status. When marked as COMPLETED, automatically records completedAt.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Estado actualizado exitosamente"),
-            @ApiResponse(responseCode = "404", description = "Tarea no encontrada"),
-            @ApiResponse(responseCode = "400", description = "Estado inválido")
+            @ApiResponse(responseCode = "200", description = "Status updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Task not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid status")
     })
     public ResponseEntity<TaskResponse> updateTaskStatus(
             @PathVariable String id,
@@ -118,9 +118,9 @@ public class TaskController {
     }
 
     @GetMapping("/student/{studentId}")
-    @Operation(summary = "Obtener tareas por estudiante",
-            description = "Retorna todas las tareas de un estudiante.")
-    @ApiResponse(responseCode = "200", description = "Lista de tareas obtenida exitosamente")
+    @Operation(summary = "Get tasks by student",
+            description = "Returns all tasks for a given student.")
+    @ApiResponse(responseCode = "200", description = "Task list retrieved successfully")
     public ResponseEntity<List<TaskResponse>> getTasksByStudentId(@PathVariable String studentId) {
         List<Task> tasks = getTasksUseCase.getTasksByStudentId(studentId);
         List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
@@ -128,9 +128,9 @@ public class TaskController {
     }
 
     @PostMapping("/student/{studentId}/organize")
-    @Operation(summary = "Organizar tareas (Calendario)",
-            description = "Organiza y asigna fechas a las tareas pendientes del estudiante.")
-    @ApiResponse(responseCode = "200", description = "Tareas organizadas exitosamente")
+    @Operation(summary = "Organize tasks (Calendar)",
+            description = "Organizes and assigns dates to the student's pending tasks.")
+    @ApiResponse(responseCode = "200", description = "Tasks organized successfully")
     public ResponseEntity<List<TaskResponse>> organizeTasks(@PathVariable String studentId) {
         List<Task> organizedTasks = organizeTasksUseCase.organizeTasksForStudent(studentId);
         List<TaskResponse> response = organizedTasks.stream().map(taskDtoMapper::toResponse).toList();

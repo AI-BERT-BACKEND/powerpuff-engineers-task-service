@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s \"C:\\\\Users\\\\juanv\\\\OneDrive\\\\Documentos\\\\powerpuff-engineers-task-service\\\\src\\\\main\")"
+    ]
+  }
+}

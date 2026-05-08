@@ -31,6 +31,6 @@ class OpenApiConfigTest {
     @Test
     void customOpenAPI_ShouldHaveDescription() {
         OpenAPI openAPI = config.customOpenAPI();
-        assertNotNull(openAPI.getInfo().getDescription());
+        assertEquals("Task management API for students", openAPI.getInfo().getDescription());
     }
 }

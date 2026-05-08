@@ -14,6 +14,6 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Task Service API")
                         .version("1.0.0")
-                        .description("API de gestión de tareas para estudiantes"));
+                        .description("Task management API for students"));
     }
 }

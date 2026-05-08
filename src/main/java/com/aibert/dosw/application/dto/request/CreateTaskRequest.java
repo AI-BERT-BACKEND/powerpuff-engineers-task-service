@@ -18,22 +18,22 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class CreateTaskRequest {
 
-    @NotBlank(message = "El título es requerido")
+    @NotBlank(message = "Title is required")
     private String title;
 
     private String description;
 
-    @NotNull(message = "La duración estimada es requerida")
-    @Positive(message = "La duración estimada debe ser positiva")
+    @NotNull(message = "Estimated duration is required")
+    @Positive(message = "Estimated duration must be positive")
     private Integer estimatedDurationMinutes;
 
-    @NotNull(message = "La fecha límite es requerida")
-    @Future(message = "La fecha límite no puede ser en el pasado")
+    @NotNull(message = "Deadline is required")
+    @Future(message = "Deadline cannot be in the past")
     private LocalDateTime deadline;
 
-    @NotNull(message = "La prioridad es requerida")
+    @NotNull(message = "Priority is required")
     private TaskPriority priority;
 
-    @NotBlank(message = "La materia es requerida")
+    @NotBlank(message = "Subject is required")
     private String subjectId;
 }
