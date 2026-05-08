@@ -178,7 +178,6 @@
                                 <exclude>com/aibert/dosw/config/**</exclude>
                                 <exclude>com/aibert/dosw/domain/model/**</exclude>
                                 <exclude>com/aibert/dosw/domain/exceptions/**</exclude>
-                                <exclude>com/aibert/dosw/infrastructure/adapters/persistence/entity/**</exclude>
                             </excludes>
                         </configuration>
                     </execution>
