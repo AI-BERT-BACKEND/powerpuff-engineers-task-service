@@ -1,5 +1,6 @@
 package com.aibert.dosw.infrastructure.adapters;
 
+import com.aibert.dosw.application.dto.SubjectDTO;
 import com.aibert.dosw.domain.ports.out.SubjectValidationPort;
 import com.aibert.dosw.infrastructure.external.AcademicServiceClient;
 import feign.FeignException;
@@ -30,7 +31,11 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
     @Override
     public boolean exists(String subjectId) {
         try {
-            academicServiceClient.getSubjectById(subjectId);
+            SubjectDTO subject = academicServiceClient.getSubjectById(subjectId);
+            if (subject == null) {
+                log.warn("Fallback activo: no se pudo confirmar existencia de subject '{}'.", subjectId);
+                return false;
+            }
             return true;
         } catch (FeignException.NotFound e) {
             log.debug("academic-service: subject '{}' not found.", subjectId);
