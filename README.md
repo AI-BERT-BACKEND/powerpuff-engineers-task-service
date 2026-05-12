@@ -1,7 +1,8 @@
 # Task Service
 
-> Microservicio de gestión inteligente de tareas académicas para la plataforma **AI-BERT**.  
-> Permite a estudiantes universitarios crear, organizar, priorizar y visualizar sus tareas con el objetivo de mejorar la gestión del tiempo y prevenir el burnout.
+> **Microservicio de Gestión Inteligente de Tareas Académicas** para la plataforma **AI-BERT**.  
+> 
+> Un servicio backend especializado en optimizar la productividad estudiantil mediante la creación, organización automática y visualización inteligente de tareas académicas. Implementa algoritmos de priorización y distribución temporal para equilibrar la carga de trabajo del estudiante, prevenir el agotamiento académico (burnout) y mejorar significativamente su rendimiento. Construido con **Spring Boot 3.4**, **Java 21** y una arquitectura hexagonal, garantiza escalabilidad, mantenibilidad y calidad de código con cobertura de tests del 90%.
 
 ---
 
@@ -15,7 +16,7 @@
 - [Patrones de Diseño](#patrones-de-diseño)
 - [Stack Tecnológico](#stack-tecnológico)
 - [Estructura del Proyecto](#estructura-del-proyecto)
-- [Endpoints REST](#endpoints-rest)
+- [Endpoints Expuestos](#endpoints-expuestos)
 - [Modelos de Dominio](#modelos-de-dominio)
 - [Perfiles de Ejecución](#perfiles-de-ejecución)
 - [Variables de Entorno](#variables-de-entorno)
@@ -31,6 +32,22 @@
 **task-service** es uno de los microservicios del backend de AI-BERT. Es responsable de todo el ciclo de vida de las tareas académicas de un estudiante: desde su creación hasta su organización automática y visualización en vistas Kanban o Calendario.
 
 El servicio sigue una **arquitectura hexagonal (Ports & Adapters)** y está construido con **Spring Boot 3.4 + Java 21**.
+
+---
+
+![Task Service Logo](./docs/img/logo.png)
+
+---
+
+## Integrantes del Equipo
+
+| Nombre | Rol |
+|--------|-----|
+| Juan David Valero | Backend - Arquitectura |
+| Isaac David Burgos | Líder / Frontend |
+| Daniel Felipe Rayo | Backend - DevOps |
+| Juan Hernández Moreno | Frontend / Líder |
+| Daniel Peña Bonilla | Frontend |
 
 ---
 
@@ -106,7 +123,7 @@ El servicio implementa **Arquitectura Hexagonal** con las siguientes capas:
                         │  (valida JWT, inyecta│
                         │   header X-User-Id)  │
                         └─────────┬───────────┘
-                                  │ HTTP
+                                  │ HTTP REST
                                   ▼
                         ┌─────────────────────┐
                         │    task-service      │
@@ -115,16 +132,16 @@ El servicio implementa **Arquitectura Hexagonal** con las siguientes capas:
                                    │ Feign (HTTP)
                                    │ perfil: feign
                                    ▼
-                        ┌─────────────────────┐
-                        │  academic-service    │
-                        │     :8083            │
-                        │  /api/subjects/...   │
-                        └─────────────────────┘
+                        ┌──────────────────────────────────┐
+                        │       academic-service           │
+                        │           :8083                  │
+                        │  GET /api/v1/subjects/{subjectId}│
+                        └──────────────────────────────────┘
 
                         ┌─────────────────────┐
-                        │     PostgreSQL        │
-                        │     :5440 (Docker)   │
-                        │     :5432 (local)    │
+                        │      PostgreSQL      │
+                        │  :5440 (Docker)      │
+                        │  :5432 (local)       │
                         └─────────────────────┘
 ```
 
@@ -143,17 +160,15 @@ El servicio implementa **Arquitectura Hexagonal** con las siguientes capas:
 - **Cuándo se activa:** solo con el perfil `feign`; sin él se usa un stub que acepta cualquier `subjectId`
 - **Resiliencia:** Resilience4j **Circuit Breaker** activo — si academic-service falla, se ejecuta `AcademicServiceFallback`
 
-| Endpoint consumido | Uso |
-|-------------------|-----|
-| `GET /api/subjects/{subjectId}` | Validar que la materia existe antes de crear una tarea |
-| `GET /api/subjects/user/{userId}` | Listar las materias disponibles para el estudiante |
+| Endpoint consumido | Método | Uso |
+|-------------------|--------|-----|
+| `GET /api/v1/subjects/{subjectId}` | `getSubjectById()` | Validar que la materia existe antes de crear una tarea |
 
 **Comportamiento del fallback (`AcademicServiceFallback`):**
 
-| Método | Respuesta en fallo |
-|--------|-------------------|
-| `getSubjectById()` | Retorna `null` → `SubjectValidationAdapter` lanzará `SubjectNotFoundException` |
-| `getSubjectsByUserId()` | Retorna lista vacía |
+| Método | Respuesta en fallo | Efecto |
+|--------|-------------------|--------|
+| `getSubjectById()` | Retorna `null` | `SubjectServiceFeignAdapter` detecta el `null` y lanza `SubjectNotFoundException` |
 
 ### Base de datos
 
@@ -167,8 +182,9 @@ El servicio implementa **Arquitectura Hexagonal** con las siguientes capas:
 | Servicio | Dirección | Protocolo | Perfil requerido | Resiliencia |
 |---------|-----------|-----------|-----------------|-------------|
 | **API Gateway** | → task-service | HTTP REST | Cualquiera | — |
-| **academic-service** | task-service → | HTTP/Feign | `feign` | Circuit Breaker + Fallback |
+| **academic-service** | task-service → | HTTP/Feign | `feign` | Circuit Breaker + Fallback (Resilience4j) |
 | **PostgreSQL** | task-service → | JDBC/JPA | `postgres` | HikariCP (pool) |
+| **auth-service** | — | — | — | task-service **NO** llama a auth-service. El JWT es validado únicamente por el API Gateway. |
 
 ---
 
@@ -193,7 +209,6 @@ El servicio implementa **Arquitectura Hexagonal** con las siguientes capas:
 | Patrón | Dónde se aplica | Beneficio |
 |--------|-----------------|-----------|
 | **Adapter** | `TaskRepositoryAdapter`, `InMemoryTaskRepository`, `SubjectServiceFeignAdapter`, `SubjectValidationAdapter` | Traduce la interfaz del puerto de dominio a la tecnología concreta (JPA, Feign, memoria) |
-| **Facade** | `TaskService` — envuelve `AcademicServiceClient` | Simplifica el acceso al cliente externo para los casos de uso |
 | **Proxy / Fallback** | `AcademicServiceFallback` implementa `AcademicServiceClient` | Resilience4j activa el fallback automáticamente ante fallos del servicio externo |
 
 ### Comportamentales
@@ -226,7 +241,7 @@ El servicio implementa **Arquitectura Hexagonal** con las siguientes capas:
 | Persistencia | Spring Data JPA + PostgreSQL | 16 |
 | Migraciones | Flyway | — |
 | Comunicación externa | OpenFeign + Resilience4j | Spring Cloud 2024.0.1 |
-| Seguridad | Spring Security + JWT (jjwt) | 0.11.5 |
+| Seguridad | Spring Security (CORS) | Spring Boot 3.4.3 |
 | Documentación API | SpringDoc OpenAPI (Swagger UI) | 2.8.5 |
 | Código boilerplate | Lombok | 1.18.32 |
 | Testing | JUnit 5 + Mockito + H2 | — |
@@ -246,7 +261,6 @@ task-service/
 │   │   │   ├── application/
 │   │   │   │   ├── dto/                    # CreateTaskRequest, TaskResponse, KanbanResponse, SubjectDTO
 │   │   │   │   ├── mapper/                 # TaskDtoMapper
-│   │   │   │   ├── service/                # TaskService (Feign wrapper)
 │   │   │   │   └── usecase/                # Implementaciones de casos de uso
 │   │   │   ├── config/
 │   │   │   │   ├── OpenApiConfig.java      # Configuración Swagger/OpenAPI
@@ -280,28 +294,147 @@ task-service/
 
 ---
 
-## Endpoints REST
+## Endpoints Expuestos
 
-Base URL: `http://localhost:8084/api/tasks`
+Base URL: `http://localhost:8084`
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `POST` | `/api/tasks` | Crea una nueva tarea para el estudiante autenticado |
-| `GET` | `/api/tasks?studentId=&sortBy=&view=` | Lista tareas (soporte para vista kanban, calendar y ordenamiento) |
-| `PATCH` | `/api/tasks/{id}/status` | Actualiza el estado de una tarea |
-| `GET` | `/api/tasks/student/{studentId}` | Obtiene todas las tareas de un estudiante |
-| `POST` | `/api/tasks/student/{studentId}/organize` | Ejecuta la organización inteligente de tareas |
+> Todos los endpoints requieren el header `X-User-Id` inyectado por el API Gateway (excepto los que reciben `studentId` por path).
 
-### Parámetros del GET `/api/tasks`
+---
 
-| Parámetro | Tipo | Descripción |
-|-----------|------|-------------|
+### `POST /api/tasks` — Crear tarea
+
+Crea una nueva tarea académica para el estudiante autenticado. Valida que la materia exista en academic-service (con perfil `feign`) y que no haya duplicado por título + materia.
+
+**Header de entrada:**
+
+| Header | Tipo | Requerido | Descripción |
+|--------|------|-----------|-------------|
+| `X-User-Id` | String | ✅ | ID del estudiante autenticado (inyectado por API Gateway) |
+
+**Body de entrada (`application/json`):**
+
+| Campo | Tipo | Requerido | Validación |
+|-------|------|-----------|------------|
+| `title` | String | ✅ | No vacío |
+| `description` | String | ❌ | Opcional |
+| `estimatedDurationMinutes` | Integer | ✅ | Mayor a 0 |
+| `deadline` | LocalDateTime | ✅ | Debe ser fecha futura |
+| `priority` | `LOW \| MEDIUM \| HIGH \| CRITICAL` | ✅ | Enum |
+| `subjectId` | String | ✅ | ID de la materia (validado contra academic-service) |
+
+**Respuesta exitosa `201 Created`:**
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | String (UUID) | ID generado de la tarea |
 | `studentId` | String | ID del estudiante |
-| `sortBy` | `PRIORITY \| DEADLINE \| SUBJECT` | Criterio de ordenamiento |
-| `view` | `kanban \| calendar` | Tipo de vista |
-| `status` | `TODO \| IN_PROGRESS \| COMPLETED` | Filtro por estado (para calendar) |
-| `startDate` | LocalDateTime | Fecha inicio del rango (para calendar) |
-| `endDate` | LocalDateTime | Fecha fin del rango (para calendar) |
+| `subjectId` | String | ID de la materia |
+| `title` | String | Título de la tarea |
+| `description` | String | Descripción (puede ser null) |
+| `estimatedDurationMinutes` | Integer | Duración estimada en minutos |
+| `deadline` | LocalDateTime | Fecha límite |
+| `priority` | String | Prioridad asignada |
+| `status` | String | `TODO` (valor por defecto) |
+| `scheduledDate` | LocalDateTime | Fecha programada (null hasta organizar) |
+| `completedAt` | LocalDateTime | Fecha de completado (null) |
+
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| `400` | Campos inválidos o faltantes |
+| `404` | La materia (`subjectId`) no existe en academic-service |
+| `409` | Ya existe una tarea con el mismo título para esa materia |
+
+---
+
+### `GET /api/tasks` — Listar tareas del estudiante
+
+Retorna las tareas del estudiante autenticado. Soporta tres modos según el parámetro `view`.
+
+**Header de entrada:**
+
+| Header | Tipo | Requerido |
+|--------|------|-----------|
+| `X-User-Id` | String | ✅ |
+
+**Query params:**
+
+| Parámetro | Tipo | Requerido | Descripción |
+|-----------|------|-----------|-------------|
+| `view` | `kanban \| calendar` | ❌ | Sin este param retorna lista ordenada (R12) |
+| `sortBy` | `PRIORITY \| DEADLINE \| SUBJECT` | ❌ | Criterio de ordenamiento (solo sin `view`) |
+| `status` | `TODO \| IN_PROGRESS \| COMPLETED` | ❌ | Filtro por estado (solo con `view=calendar`) |
+| `startDate` | LocalDateTime (ISO) | ❌ | Inicio del rango (solo con `view=calendar`) |
+| `endDate` | LocalDateTime (ISO) | ❌ | Fin del rango (solo con `view=calendar`) |
+
+**Respuesta `200 OK` — Sin `view` o `view=calendar`:** `List<TaskResponse>` (mismos campos que el POST)
+
+**Respuesta `200 OK` — `view=kanban`:**
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `todo` | `List<TaskResponse>` | Tareas con status `TODO` |
+| `inProgress` | `List<TaskResponse>` | Tareas con status `IN_PROGRESS` |
+| `completed` | `List<TaskResponse>` | Tareas con status `COMPLETED` |
+
+---
+
+### `PATCH /api/tasks/{id}/status` — Actualizar estado
+
+Cambia el estado de una tarea. Al marcar como `COMPLETED` se registra automáticamente `completedAt`.
+
+**Path variable:**
+
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `id` | String (UUID) | ID de la tarea |
+
+**Body de entrada (`application/json`):**
+
+| Campo | Tipo | Requerido | Valores válidos |
+|-------|------|-----------|-----------------|
+| `status` | String | ✅ | `TODO \| IN_PROGRESS \| COMPLETED` |
+
+**Respuesta `200 OK`:** `TaskResponse` con el nuevo estado y `completedAt` si aplica.
+
+**Errores:**
+
+| Código | Causa |
+|--------|-------|
+| `400` | Estado inválido o faltante |
+| `404` | Tarea no encontrada |
+
+---
+
+### `GET /api/tasks/student/{studentId}` — Tareas por estudiante
+
+Retorna todas las tareas de un estudiante por su ID de path.
+
+**Path variable:**
+
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `studentId` | String | ID del estudiante |
+
+**Respuesta `200 OK`:** `List<TaskResponse>`
+
+---
+
+### `POST /api/tasks/student/{studentId}/organize` — Organizar tareas
+
+Distribuye automáticamente las tareas pendientes del estudiante en días disponibles según prioridad, deadline y duración estimada (máximo 240 min/día).
+
+**Path variable:**
+
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `studentId` | String | ID del estudiante |
+
+**Respuesta `200 OK`:** `List<TaskResponse>` con `scheduledDate` asignado en cada tarea organizada.
+
+---
 
 ### Documentación interactiva
 
@@ -506,7 +639,7 @@ Para visualizar, usa la extensión **PlantUML** en VS Code (`Alt+D`).
 |----|--------------|---------|
 | RNF-01 | Disponibilidad | 99.9% |
 | RNF-02 | Tiempo de respuesta | < 2s |
-| RNF-03 | Seguridad | Spring Security + JWT |
+| RNF-03 | Seguridad | Spring Security + JWT (validado por API Gateway) |
 | RNF-04 | Cobertura de tests | ≥ 80% |
 
 ---
