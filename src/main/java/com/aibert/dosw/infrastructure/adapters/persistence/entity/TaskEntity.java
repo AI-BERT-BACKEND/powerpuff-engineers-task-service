@@ -2,6 +2,7 @@ package com.aibert.dosw.infrastructure.adapters.persistence.entity;
 
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.model.TaskType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,6 +11,10 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * JPA entity mapping to the {@code tasks} database table.
+ * A unique constraint on {@code (student_id, subject_id, title)} prevents duplicate tasks.
+ */
 @Entity
 @Table(
     name = "tasks",
@@ -40,7 +45,11 @@ public class TaskEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "estimated_duration_minutes", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_type", nullable = false, length = 20)
+    private TaskType taskType;
+
+    @Column(name = "estimated_duration_minutes")
     private Integer estimatedDurationMinutes;
 
     @Column(name = "deadline", nullable = false)

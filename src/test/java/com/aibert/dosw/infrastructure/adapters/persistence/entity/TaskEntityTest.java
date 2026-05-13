@@ -2,6 +2,7 @@ package com.aibert.dosw.infrastructure.adapters.persistence.entity;
 
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.model.TaskType;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ class TaskEntityTest {
                 .subjectId("MATH-101")
                 .title("Task Title")
                 .description("Some description")
+                .taskType(TaskType.TAREA)
                 .estimatedDurationMinutes(90)
                 .deadline(deadline)
                 .priority(TaskPriority.HIGH)
@@ -38,6 +40,7 @@ class TaskEntityTest {
         assertEquals("MATH-101", e.getSubjectId());
         assertEquals("Task Title", e.getTitle());
         assertEquals("Some description", e.getDescription());
+        assertEquals(TaskType.TAREA, e.getTaskType());
         assertEquals(90, e.getEstimatedDurationMinutes());
         assertEquals(deadline, e.getDeadline());
         assertEquals(TaskPriority.HIGH, e.getPriority());
@@ -57,7 +60,7 @@ class TaskEntityTest {
     @Test
     void allArgsConstructor_ShouldSetAllFields() {
         TaskEntity e = new TaskEntity("e1", "S1", "MATH-101", "Title", "Desc",
-                60, deadline, TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, scheduled, null);
+                TaskType.LECTURA, 60, deadline, TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, scheduled, null);
 
         assertEquals("e1", e.getId());
         assertEquals(TaskPriority.MEDIUM, e.getPriority());

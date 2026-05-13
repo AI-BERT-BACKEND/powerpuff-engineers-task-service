@@ -1,6 +1,7 @@
 package com.aibert.dosw.application.dto.request;
 
 import com.aibert.dosw.domain.model.TaskPriority;
+import com.aibert.dosw.domain.model.TaskType;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +13,10 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * Request DTO for creating a new task.
+ * All validation constraints are enforced before the request reaches the use case layer.
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,7 +28,9 @@ public class CreateTaskRequest {
 
     private String description;
 
-    @NotNull(message = "Estimated duration is required")
+    @NotNull(message = "Task type is required")
+    private TaskType taskType;
+
     @Positive(message = "Estimated duration must be positive")
     private Integer estimatedDurationMinutes;
 
@@ -31,7 +38,6 @@ public class CreateTaskRequest {
     @Future(message = "Deadline cannot be in the past")
     private LocalDateTime deadline;
 
-    @NotNull(message = "Priority is required")
     private TaskPriority priority;
 
     @NotBlank(message = "Subject is required")

@@ -3,6 +3,7 @@ package com.aibert.dosw.infrastructure.adapters;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.model.TaskType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -104,7 +105,7 @@ class InMemoryTaskRepositoryTest {
         repository.save(todo);
         repository.save(done);
 
-        List<Task> result = repository.findByStudentIdWithFilters("S1", TaskStatus.TODO, null, null);
+        List<Task> result = repository.findByStudentIdWithFilters("S1", TaskStatus.TODO, null, null, null, null);
 
         assertEquals(1, result.size());
         assertEquals(TaskStatus.TODO, result.get(0).getStatus());
@@ -126,7 +127,7 @@ class InMemoryTaskRepositoryTest {
         LocalDateTime start = LocalDateTime.now();
         LocalDateTime end   = LocalDateTime.now().plusDays(5);
 
-        List<Task> result = repository.findByStudentIdWithFilters("S1", null, start, end);
+        List<Task> result = repository.findByStudentIdWithFilters("S1", null, start, end, null, null);
 
         assertEquals(1, result.size());
     }
@@ -150,9 +151,65 @@ class InMemoryTaskRepositoryTest {
         repository.save(task("S9", "MATH", "X1"));
         repository.save(task("S9", "PHYS", "X2"));
 
-        List<Task> result = repository.findByStudentIdWithFilters("S9", null, null, null);
+        List<Task> result = repository.findByStudentIdWithFilters("S9", null, null, null, null, null);
 
         assertEquals(2, result.size());
+    }
+
+    @Test
+    void save_WhenIdIsBlank_ShouldGenerateNewId() {
+        Task task = Task.builder()
+                .id("   ")
+                .title("Task with blank id")
+                .studentId("S1")
+                .subjectId("MATH-101")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .build();
+
+        Task result = repository.save(task);
+
+        assertNotNull(result.getId());
+        assertFalse(result.getId().isBlank());
+    }
+
+    @Test
+    void existsDuplicate_WhenSubjectIdDiffers_ShouldReturnFalse() {
+        repository.save(task("S1", "MATH", "My Task"));
+
+        assertFalse(repository.existsDuplicate("S1", "PHYS", "My Task"));
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenTaskHasNullDeadlineAndStartDateProvided_ShouldExcludeTask() {
+        Task taskNoDeadline = Task.builder()
+                .studentId("S1").subjectId("MATH").title("No Deadline")
+                .status(TaskStatus.TODO).priority(TaskPriority.MEDIUM)
+                .deadline(null)
+                .estimatedDurationMinutes(60)
+                .build();
+        repository.save(taskNoDeadline);
+
+        LocalDateTime start = LocalDateTime.now();
+        List<Task> result = repository.findByStudentIdWithFilters("S1", null, start, null, null, null);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenTaskHasNullDeadlineAndEndDateProvided_ShouldExcludeTask() {
+        Task taskNoDeadline = Task.builder()
+                .studentId("S1").subjectId("MATH").title("No Deadline End")
+                .status(TaskStatus.TODO).priority(TaskPriority.MEDIUM)
+                .deadline(null)
+                .estimatedDurationMinutes(60)
+                .build();
+        repository.save(taskNoDeadline);
+
+        LocalDateTime end = LocalDateTime.now().plusDays(5);
+        List<Task> result = repository.findByStudentIdWithFilters("S1", null, null, end, null, null);
+
+        assertTrue(result.isEmpty());
     }
 
     private Task task(String studentId, String subjectId, String title) {
@@ -165,5 +222,59 @@ class InMemoryTaskRepositoryTest {
                 .deadline(LocalDateTime.now().plusDays(5))
                 .estimatedDurationMinutes(60)
                 .build();
+    }
+
+    // R41 — subjectId / taskType filter tests
+    @Test
+    void findByStudentIdWithFilters_WhenSubjectIdFilter_ShouldReturnMatchingTasks() {
+        Task mathTask = task("S1", "MATH-101", "Tarea de mates");
+        Task physTask = task("S1", "PHYS-201", "Tarea de física");
+        repository.save(mathTask);
+        repository.save(physTask);
+
+        List<Task> result = repository.findByStudentIdWithFilters("S1", null, null, null, "MATH-101", null);
+
+        assertEquals(1, result.size());
+        assertEquals("MATH-101", result.get(0).getSubjectId());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenTaskTypeFilter_ShouldReturnMatchingTasks() {
+        Task exam = Task.builder()
+                .studentId("S1").subjectId("MATH-101").title("Examen parcial")
+                .status(TaskStatus.TODO).priority(TaskPriority.HIGH)
+                .taskType(TaskType.EXAMEN).deadline(LocalDateTime.now().plusDays(5))
+                .estimatedDurationMinutes(90).build();
+
+        Task homework = Task.builder()
+                .studentId("S1").subjectId("MATH-101").title("Tarea de álgebra")
+                .status(TaskStatus.TODO).priority(TaskPriority.MEDIUM)
+                .taskType(TaskType.TAREA).deadline(LocalDateTime.now().plusDays(5))
+                .estimatedDurationMinutes(60).build();
+
+        repository.save(exam);
+        repository.save(homework);
+
+        List<Task> result = repository.findByStudentIdWithFilters("S1", null, null, null, null, TaskType.EXAMEN);
+
+        assertEquals(1, result.size());
+        assertEquals(TaskType.EXAMEN, result.get(0).getTaskType());
+    }
+
+    @Test
+    void deleteById_ShouldRemoveTaskFromRepository() {
+        Task saved = repository.save(task("S1", "MATH", "To Delete"));
+        String id = saved.getId();
+
+        assertTrue(repository.findById(id).isPresent());
+
+        repository.deleteById(id);
+
+        assertTrue(repository.findById(id).isEmpty());
+    }
+
+    @Test
+    void deleteById_WhenIdNotFound_ShouldNotThrow() {
+        assertDoesNotThrow(() -> repository.deleteById("non-existent-id"));
     }
 }

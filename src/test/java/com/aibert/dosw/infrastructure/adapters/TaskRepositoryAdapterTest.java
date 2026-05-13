@@ -150,7 +150,7 @@ class TaskRepositoryAdapterTest {
         when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(todoEntity, doneEntity));
         when(mapper.toDomain(todoEntity)).thenReturn(todoTask);
 
-        List<Task> result = adapter.findByStudentIdWithFilters("S1", TaskStatus.TODO, null, null);
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", TaskStatus.TODO, null, null, null, null);
 
         assertEquals(1, result.size());
         assertEquals(TaskStatus.TODO, result.get(0).getStatus());
@@ -199,7 +199,7 @@ class TaskRepositoryAdapterTest {
         when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entity));
         when(mapper.toDomain(entity)).thenReturn(task);
 
-        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, start, end);
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, start, end, null, null);
 
         assertEquals(1, result.size());
     }
@@ -212,7 +212,7 @@ class TaskRepositoryAdapterTest {
         when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entityNoDeadline));
 
         List<Task> result = adapter.findByStudentIdWithFilters("S1", null,
-                LocalDateTime.now().minusDays(1), null);
+                LocalDateTime.now().minusDays(1), null, null, null);
 
         assertEquals(0, result.size());
     }
@@ -224,9 +224,97 @@ class TaskRepositoryAdapterTest {
 
         when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entity));
 
-        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, null, endDate);
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, null, endDate, null, null);
 
         assertEquals(0, result.size());
+    }
+
+    @Test
+    void saveAll_WhenTaskIdIsBlank_ShouldGenerateNewId() {
+        Task task = buildTask("   ");
+        TaskEntity entity = buildEntity("generated-id");
+        Task saved = buildTask("generated-id");
+
+        when(mapper.toEntity(any())).thenReturn(entity);
+        when(jpaRepository.saveAll(anyList())).thenReturn(List.of(entity));
+        when(mapper.toDomain(entity)).thenReturn(saved);
+
+        List<Task> result = adapter.saveAll(List.of(task));
+
+        assertEquals(1, result.size());
+        verify(jpaRepository).saveAll(anyList());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenDeadlineBeforeStartDate_ShouldExclude() {
+        TaskEntity entityPastDeadline = buildEntity("past-task");
+        entityPastDeadline.setDeadline(LocalDateTime.now().minusDays(5));
+
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entityPastDeadline));
+
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null,
+                LocalDateTime.now().minusDays(1), null, null, null);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenDeadlineNullAndEndDateFilter_ShouldExclude() {
+        TaskEntity entityNoDeadline = buildEntity("no-deadline");
+        entityNoDeadline.setDeadline(null);
+
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(entityNoDeadline));
+
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, null,
+                LocalDateTime.now().plusDays(5), null, null);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenSubjectIdFilter_ShouldReturnMatchingTasks() {
+        TaskEntity mathEntity = buildEntity("math-task");
+        TaskEntity physEntity = buildEntity("phys-task");
+        physEntity.setSubjectId("PHYS-201");
+
+        Task mathTask = buildTask("math-task"); // subjectId = "MATH-101"
+        // physEntity won't be mapped because it's filtered out before mapper is called
+
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(mathEntity, physEntity));
+        when(mapper.toDomain(mathEntity)).thenReturn(mathTask);
+
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, null, null, "MATH-101", null);
+
+        assertEquals(1, result.size());
+        assertEquals("math-task", result.get(0).getId());
+    }
+
+    @Test
+    void findByStudentIdWithFilters_WhenTaskTypeFilter_ShouldReturnMatchingTasks() {
+        TaskEntity examEntity = buildEntity("exam-task");
+        examEntity.setTaskType(com.aibert.dosw.domain.model.TaskType.EXAMEN);
+        TaskEntity tareaEntity = buildEntity("tarea-task");
+        tareaEntity.setTaskType(com.aibert.dosw.domain.model.TaskType.TAREA);
+
+        Task examTask = buildTask("exam-task");
+
+        when(jpaRepository.findByStudentId("S1")).thenReturn(List.of(examEntity, tareaEntity));
+        when(mapper.toDomain(examEntity)).thenReturn(examTask);
+
+        List<Task> result = adapter.findByStudentIdWithFilters("S1", null, null, null, null,
+                com.aibert.dosw.domain.model.TaskType.EXAMEN);
+
+        assertEquals(1, result.size());
+        assertEquals("exam-task", result.get(0).getId());
+    }
+
+    @Test
+    void deleteById_ShouldDelegateToJpaRepository() {
+        doNothing().when(jpaRepository).deleteById("task-to-delete");
+
+        adapter.deleteById("task-to-delete");
+
+        verify(jpaRepository).deleteById("task-to-delete");
     }
 }
 

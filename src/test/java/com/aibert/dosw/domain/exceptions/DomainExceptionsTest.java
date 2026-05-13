@@ -27,4 +27,20 @@ class DomainExceptionsTest {
         assertEquals("Materia MATH-101 no encontrada", ex.getMessage());
         assertInstanceOf(RuntimeException.class, ex);
     }
+
+    @Test
+    void taskForbiddenException_ShouldContainTaskId() {
+        TaskForbiddenException ex = new TaskForbiddenException("task-77");
+        assertNotNull(ex.getMessage());
+        assertTrue(ex.getMessage().contains("task-77"));
+        assertInstanceOf(RuntimeException.class, ex);
+    }
+
+    @Test
+    void taskEditNotAllowedException_ShouldContainTaskId() {
+        TaskEditNotAllowedException ex = new TaskEditNotAllowedException("task-88");
+        assertNotNull(ex.getMessage());
+        assertTrue(ex.getMessage().contains("task-88"));
+        assertInstanceOf(RuntimeException.class, ex);
+    }
 }

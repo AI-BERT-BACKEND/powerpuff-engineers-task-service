@@ -152,18 +152,45 @@ class OrganizeTasksUseCaseImplTest {
 
     @Test
     void organizeTasksForStudent_WhenPriorityIsNull_ShouldTreatAsLowest() {
-        Task task = Task.builder().id("1").studentId("S1").title("Null priority task")
+        Task nullPriorityTask = Task.builder().id("1").studentId("S1").title("Null priority task")
                 .status(TaskStatus.TODO).priority(null)
                 .estimatedDurationMinutes(60)
                 .deadline(LocalDateTime.now().plusDays(3))
                 .build();
+        Task mediumPriorityTask = Task.builder().id("2").studentId("S1").title("Medium priority task")
+                .status(TaskStatus.TODO).priority(TaskPriority.MEDIUM)
+                .estimatedDurationMinutes(30)
+                .deadline(LocalDateTime.now().plusDays(4))
+                .build();
 
-        when(taskRepositoryPort.findByStudentId("S1")).thenReturn(List.of(task));
-        when(taskRepositoryPort.saveAll(anyList())).thenReturn(List.of(task));
+        when(taskRepositoryPort.findByStudentId("S1")).thenReturn(List.of(nullPriorityTask, mediumPriorityTask));
+        when(taskRepositoryPort.saveAll(anyList())).thenReturn(List.of(mediumPriorityTask, nullPriorityTask));
 
         List<Task> result = organizeTasksUseCase.organizeTasksForStudent("S1");
 
         assertNotNull(result);
-        assertNotNull(task.getScheduledDate());
+        assertNotNull(nullPriorityTask.getScheduledDate());
+    }
+
+    @Test
+    void organizeTasksForStudent_WithHighPriority_ShouldSortHighBeforeLow() {
+        Task highTask = Task.builder().id("1").studentId("S1").title("High priority task")
+                .status(TaskStatus.TODO).priority(TaskPriority.HIGH)
+                .estimatedDurationMinutes(60)
+                .deadline(LocalDateTime.now().plusDays(5))
+                .build();
+        Task lowTask = Task.builder().id("2").studentId("S1").title("Low priority task")
+                .status(TaskStatus.TODO).priority(TaskPriority.LOW)
+                .estimatedDurationMinutes(30)
+                .deadline(LocalDateTime.now().plusDays(2))
+                .build();
+
+        when(taskRepositoryPort.findByStudentId("S1")).thenReturn(List.of(lowTask, highTask));
+        when(taskRepositoryPort.saveAll(anyList())).thenReturn(List.of(highTask, lowTask));
+
+        List<Task> result = organizeTasksUseCase.organizeTasksForStudent("S1");
+
+        assertNotNull(result);
+        assertNotNull(highTask.getScheduledDate());
     }
 }

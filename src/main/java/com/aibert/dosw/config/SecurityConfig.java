@@ -12,6 +12,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Spring Security configuration for the Task Service.
+ * <p>JWT validation is delegated to the API Gateway; this service only enforces
+ * which paths are publicly accessible and enables CORS for all origins.</p>
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -27,6 +32,18 @@ public class SecurityConfig {
             "/actuator/info"
     };
 
+    /**
+     * Configures the HTTP security filter chain.
+     * <ul>
+     *   <li>Enables CORS using {@link #corsConfigurationSource()}.</li>
+     *   <li>Disables CSRF (stateless REST API).</li>
+     *   <li>Permits all requests to {@code PUBLIC_PATHS}; all others require authentication.</li>
+     * </ul>
+     *
+     * @param http the {@link HttpSecurity} to configure
+     * @return the built {@link SecurityFilterChain}
+     * @throws Exception if the configuration cannot be applied
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -40,6 +57,12 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Creates a {@link CorsConfigurationSource} that allows all origins, all standard HTTP methods,
+     * all headers, and credentials. Registered for all paths ({@code /**}).
+     *
+     * @return the CORS configuration source
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();

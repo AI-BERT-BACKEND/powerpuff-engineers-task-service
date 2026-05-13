@@ -5,13 +5,22 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Stub local activo cuando el perfil 'feign' NO está presente.
- * Acepta cualquier subjectId no vacío. Útil en tests y desarrollo local.
+ * Stub implementation of {@link SubjectValidationPort} active when the {@code feign} profile is NOT present.
+ * Accepts any non-null, non-blank subject ID as valid.
+ * Intended for local development and automated tests that do not integrate with academic-service.
  */
 @Component
 @Profile("!feign")
 public class SubjectValidationAdapter implements SubjectValidationPort {
 
+    /**
+     * {@inheritDoc}
+     * Returns {@code true} for any non-null, non-blank subject ID
+     * without contacting an external service.
+     *
+     * @param subjectId the subject identifier to validate
+     * @return {@code true} if {@code subjectId} is non-null and non-blank
+     */
     @Override
     public boolean exists(String subjectId) {
         return subjectId != null && !subjectId.isBlank();

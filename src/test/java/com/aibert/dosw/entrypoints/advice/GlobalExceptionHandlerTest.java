@@ -2,6 +2,8 @@ package com.aibert.dosw.entrypoints.advice;
 
 import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
 import com.aibert.dosw.domain.exceptions.TaskConflictException;
+import com.aibert.dosw.domain.exceptions.TaskEditNotAllowedException;
+import com.aibert.dosw.domain.exceptions.TaskForbiddenException;
 import com.aibert.dosw.domain.exceptions.TaskNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,5 +71,27 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("Tarea no encontrada con ID: task-id-123", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleTaskForbiddenException_ShouldReturnForbidden() {
+        TaskForbiddenException ex = new TaskForbiddenException("task-id-99");
+
+        ResponseEntity<Map<String, String>> response = handler.handleTaskForbiddenException(ex);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().get("message").contains("task-id-99"));
+    }
+
+    @Test
+    void handleTaskEditNotAllowedException_ShouldReturnBadRequest() {
+        TaskEditNotAllowedException ex = new TaskEditNotAllowedException("task-id-55");
+
+        ResponseEntity<Map<String, String>> response = handler.handleTaskEditNotAllowedException(ex);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().get("message").contains("task-id-55"));
     }
 }

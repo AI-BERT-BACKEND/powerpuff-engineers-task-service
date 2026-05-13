@@ -28,6 +28,19 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
 
     private final AcademicServiceClient academicServiceClient;
 
+    /**
+     * {@inheritDoc}
+     * Calls the academic-service {@code GET /api/subjects/{subjectId}} endpoint:
+     * <ul>
+     *   <li>HTTP 200 → returns {@code true}</li>
+     *   <li>HTTP 404 ({@link FeignException.NotFound}) → returns {@code false}</li>
+     *   <li>Any other {@link FeignException} → rethrown to the caller</li>
+     * </ul>
+     *
+     * @param subjectId the subject identifier to validate
+     * @return {@code true} if the subject exists; {@code false} if it returns 404
+     * @throws FeignException for any non-404 communication error with academic-service
+     */
     @Override
     public boolean exists(String subjectId) {
         try {

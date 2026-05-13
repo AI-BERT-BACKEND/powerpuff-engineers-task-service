@@ -7,6 +7,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * Domain model representing a student task.
+ * <p>
+ * Central aggregate of the task-service domain. Holds all information
+ * needed to create, track, and schedule a task assigned to a student
+ * for a specific academic subject.
+ * </p>
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,6 +25,7 @@ public class Task {
     private String title;
     private String subjectId;
     private String description;
+    private TaskType taskType;
     private Integer estimatedDurationMinutes;
     private LocalDateTime deadline;
     private TaskPriority priority;

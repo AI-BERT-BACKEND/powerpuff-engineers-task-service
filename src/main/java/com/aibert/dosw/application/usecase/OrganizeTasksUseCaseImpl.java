@@ -15,6 +15,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Spring service implementing the {@link OrganizeTasksUseCase} input port.
+ * Greedily assigns a {@code scheduledDate} to each pending task based on available daily capacity.
+ */
 @Service
 @RequiredArgsConstructor
 public class OrganizeTasksUseCaseImpl implements OrganizeTasksUseCase {
@@ -22,6 +26,16 @@ public class OrganizeTasksUseCaseImpl implements OrganizeTasksUseCase {
     private final TaskRepositoryPort taskRepositoryPort;
     private static final int MAX_MINUTES_PER_DAY = 240;
 
+    /**
+     * {@inheritDoc}
+     * <p>Filters only {@code TODO} tasks, sorts them by priority (descending) then deadline,
+     * and assigns a start date at 09:00 on the earliest day with enough remaining capacity
+     * ({@value MAX_MINUTES_PER_DAY} minutes per day). Falls back to the task's own deadline
+     * if all earlier days are full.</p>
+     *
+     * @param studentId the student whose tasks should be organized
+     * @return all tasks for the student (both newly scheduled and previously non-TODO tasks)
+     */
     @Override
     public List<Task> organizeTasksForStudent(String studentId) {
         List<Task> allTasks = taskRepositoryPort.findByStudentId(studentId);
@@ -44,6 +58,17 @@ public class OrganizeTasksUseCaseImpl implements OrganizeTasksUseCase {
         return allTasks;
     }
 
+    /**
+     * Finds the earliest calendar date on which the task can be scheduled
+     * without exceeding the daily capacity limit.
+     * <p>Iterates from {@code startDate} up to the task's effective deadline.
+     * If all days in the range are full, the task is appended to the deadline day regardless.</p>
+     *
+     * @param task                  the task to schedule
+     * @param dailyAssignedMinutes  mutable map tracking how many minutes have been assigned per day
+     * @param startDate             the earliest date to consider (typically today)
+     * @return the selected schedule date
+     */
     private LocalDate findAvailableDateForTask(Task task,
                                                Map<LocalDate, Integer> dailyAssignedMinutes,
                                                LocalDate startDate) {
@@ -66,6 +91,13 @@ public class OrganizeTasksUseCaseImpl implements OrganizeTasksUseCase {
         return effectiveDeadline;
     }
 
+    /**
+     * Maps a task's priority to a numeric score used for sorting.
+     * A {@code null} priority returns {@code 0} (lowest possible score).
+     *
+     * @param task the task whose priority should be scored
+     * @return a numeric score where CRITICAL=4, HIGH=3, MEDIUM=2, LOW=1, null=0
+     */
     private int getPriorityScore(Task task) {
         if (task.getPriority() == null) return 0;
         return switch (task.getPriority()) {
