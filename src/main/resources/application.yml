@@ -49,6 +49,29 @@ feign:
         read-timeout: 10000
         logger-level: BASIC
 
+logging:
+  level:
+    com.aibert.dosw.infrastructure.external: DEBUG
+
+clients:
+  academic-service:
+    url: ${ACADEMIC_SERVICE_URL:http://localhost:8083}
+
+---
+# -----------------------------------------------------------
+# Profile: inmemory
+# Disables JPA and Flyway autoconfiguration (no database needed).
+# -----------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: inmemory
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+
 ---
 # -----------------------------------------------------------
 # Profile: postgres

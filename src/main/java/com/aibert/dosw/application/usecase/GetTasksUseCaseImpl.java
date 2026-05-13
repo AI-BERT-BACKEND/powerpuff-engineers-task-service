@@ -8,12 +8,22 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * Spring service implementing the {@link GetTasksUseCase} input port.
+ * Delegates retrieval to the persistence output port without additional business logic.
+ */
 @Service
 @RequiredArgsConstructor
 public class GetTasksUseCaseImpl implements GetTasksUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param studentId the student's identifier
+     * @return all tasks belonging to the student; empty list if none found
+     */
     @Override
     public List<Task> getTasksByStudentId(String studentId) {
         return taskRepositoryPort.findByStudentId(studentId);

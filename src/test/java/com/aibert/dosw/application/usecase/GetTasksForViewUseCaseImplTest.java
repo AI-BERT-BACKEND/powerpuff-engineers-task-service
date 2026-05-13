@@ -76,21 +76,21 @@ class GetTasksForViewUseCaseImplTest {
         LocalDateTime end   = LocalDateTime.now().plusDays(7);
         Task t = task("5", TaskStatus.TODO);
 
-        when(taskRepositoryPort.findByStudentIdWithFilters("S3", TaskStatus.TODO, start, end))
+        when(taskRepositoryPort.findByStudentIdWithFilters("S3", TaskStatus.TODO, start, end, null, null))
                 .thenReturn(List.of(t));
 
-        List<Task> result = getTasksForViewUseCase.getCalendarView("S3", TaskStatus.TODO, start, end);
+        List<Task> result = getTasksForViewUseCase.getCalendarView("S3", TaskStatus.TODO, start, end, null, null);
 
         assertEquals(1, result.size());
-        verify(taskRepositoryPort).findByStudentIdWithFilters("S3", TaskStatus.TODO, start, end);
+        verify(taskRepositoryPort).findByStudentIdWithFilters("S3", TaskStatus.TODO, start, end, null, null);
     }
 
     @Test
     void getCalendarView_WithNullFilters_ShouldReturnAllTasks() {
-        when(taskRepositoryPort.findByStudentIdWithFilters("S4", null, null, null))
+        when(taskRepositoryPort.findByStudentIdWithFilters("S4", null, null, null, null, null))
                 .thenReturn(List.of(task("6", TaskStatus.TODO), task("7", TaskStatus.COMPLETED)));
 
-        List<Task> result = getTasksForViewUseCase.getCalendarView("S4", null, null, null);
+        List<Task> result = getTasksForViewUseCase.getCalendarView("S4", null, null, null, null, null);
 
         assertEquals(2, result.size());
     }

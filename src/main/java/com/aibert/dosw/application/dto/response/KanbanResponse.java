@@ -7,6 +7,11 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/**
+ * Response DTO for the Kanban board view.
+ * Groups tasks into three columns based on their current status:
+ * {@code todo}, {@code inProgress}, and {@code completed}.
+ */
 @Data
 @Builder
 @NoArgsConstructor

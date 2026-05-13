@@ -5,14 +5,14 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
+      POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5440:5432"
     volumes:
       -  task_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,13 +22,16 @@ services:
     container_name: task-service
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8084:8084"
     environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_NAME: ${DB_NAME}
-      DB_URL: ${DB_URL}
-      DB_USER: ${DB_USER}
+      DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      DB_SSL_MODE: disable
+      SPRING_PROFILES_ACTIVE: postgres,feign
+      ACADEMIC_SERVICE_URL: ${ACADEMIC_SERVICE_URL:-http://localhost:8083}
     depends_on:
       postgres:
         condition: service_healthy

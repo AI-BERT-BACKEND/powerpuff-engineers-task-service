@@ -2,18 +2,23 @@ package com.aibert.dosw.entrypoints.rest.controller;
 
 import com.aibert.dosw.application.dto.request.CreateTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
+import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
 import com.aibert.dosw.application.mapper.TaskDtoMapper;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.model.TaskType;
 import com.aibert.dosw.domain.ports.in.CreateTaskUseCase;
+import com.aibert.dosw.domain.ports.in.DeleteTaskUseCase;
+import com.aibert.dosw.domain.ports.in.GetTaskByIdUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
+import com.aibert.dosw.domain.ports.in.UpdateTaskUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,7 +42,10 @@ class TaskControllerTest {
     @Mock private OrganizeTasksUseCase organizeTasksUseCase;
     @Mock private TaskOrganizerUseCase taskOrganizerUseCase;
     @Mock private UpdateTaskStatusUseCase updateTaskStatusUseCase;
+    @Mock private UpdateTaskUseCase updateTaskUseCase;
+    @Mock private DeleteTaskUseCase deleteTaskUseCase;
     @Mock private GetTasksForViewUseCase getTasksForViewUseCase;
+    @Mock private GetTaskByIdUseCase getTaskByIdUseCase;
     @Mock private TaskDtoMapper taskDtoMapper;
 
     @InjectMocks
@@ -48,6 +55,7 @@ class TaskControllerTest {
     void createTask_ShouldReturnCreatedResponse() {
         CreateTaskRequest request = CreateTaskRequest.builder()
                 .title("Test title")
+                .taskType(TaskType.TAREA)
                 .priority(TaskPriority.HIGH)
                 .estimatedDurationMinutes(60)
                 .deadline(LocalDateTime.now().plusDays(1))
@@ -76,14 +84,14 @@ class TaskControllerTest {
         Task updatedTask = Task.builder().id("t1").status(TaskStatus.IN_PROGRESS).build();
         TaskResponse expectedResponse = TaskResponse.builder().id("t1").status(TaskStatus.IN_PROGRESS).build();
 
-        when(updateTaskStatusUseCase.updateStatus("t1", TaskStatus.IN_PROGRESS)).thenReturn(updatedTask);
+        when(updateTaskStatusUseCase.updateStatus("t1", "S1", TaskStatus.IN_PROGRESS)).thenReturn(updatedTask);
         when(taskDtoMapper.toResponse(updatedTask)).thenReturn(expectedResponse);
 
-        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("t1", request);
+        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("t1", "S1", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(expectedResponse, response.getBody());
-        verify(updateTaskStatusUseCase).updateStatus("t1", TaskStatus.IN_PROGRESS);
+        verify(updateTaskStatusUseCase).updateStatus("t1", "S1", TaskStatus.IN_PROGRESS);
     }
 
     @Test
@@ -93,10 +101,10 @@ class TaskControllerTest {
         Task updatedTask = Task.builder().id("t2").status(TaskStatus.COMPLETED).completedAt(now).build();
         TaskResponse expectedResponse = TaskResponse.builder().id("t2").status(TaskStatus.COMPLETED).completedAt(now).build();
 
-        when(updateTaskStatusUseCase.updateStatus("t2", TaskStatus.COMPLETED)).thenReturn(updatedTask);
+        when(updateTaskStatusUseCase.updateStatus("t2", "S1", TaskStatus.COMPLETED)).thenReturn(updatedTask);
         when(taskDtoMapper.toResponse(updatedTask)).thenReturn(expectedResponse);
 
-        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("t2", request);
+        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("t2", "S1", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody().getCompletedAt());
@@ -112,7 +120,7 @@ class TaskControllerTest {
         when(getTasksForViewUseCase.getKanbanView("S1")).thenReturn(kanbanMap);
         when(taskDtoMapper.toResponse(t1)).thenReturn(tr1);
 
-        ResponseEntity<?> response = taskController.getTasks("S1", null, "kanban", null, null, null);
+        ResponseEntity<?> response = taskController.getTasks("S1", null, "kanban", null, null, null, null, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertInstanceOf(KanbanResponse.class, response.getBody());
@@ -129,15 +137,140 @@ class TaskControllerTest {
         Task t = Task.builder().id("5").status(TaskStatus.TODO).build();
         TaskResponse tr = TaskResponse.builder().id("5").status(TaskStatus.TODO).build();
 
-        when(getTasksForViewUseCase.getCalendarView("S2", TaskStatus.TODO, start, end)).thenReturn(List.of(t));
+        when(getTasksForViewUseCase.getCalendarView("S2", TaskStatus.TODO, start, end, null, null)).thenReturn(List.of(t));
         when(taskDtoMapper.toResponse(t)).thenReturn(tr);
 
-        ResponseEntity<?> response = taskController.getTasks("S2", null, "calendar", TaskStatus.TODO, start, end);
+        ResponseEntity<?> response = taskController.getTasks("S2", null, "calendar", TaskStatus.TODO, start, end, null, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         @SuppressWarnings("unchecked")
         List<TaskResponse> body = (List<TaskResponse>) response.getBody();
         assertEquals(1, body.size());
-        verify(getTasksForViewUseCase).getCalendarView("S2", TaskStatus.TODO, start, end);
+        verify(getTasksForViewUseCase).getCalendarView("S2", TaskStatus.TODO, start, end, null, null);
+    }
+
+    @Test
+    void getTasks_WithDefaultView_ShouldReturnSortedList() {
+        Task t = Task.builder().id("3").status(TaskStatus.TODO).build();
+        TaskResponse tr = TaskResponse.builder().id("3").status(TaskStatus.TODO).build();
+
+        when(taskOrganizerUseCase.getOrganizedTasks("S3", null)).thenReturn(List.of(t));
+        when(taskDtoMapper.toResponse(t)).thenReturn(tr);
+
+        ResponseEntity<?> response = taskController.getTasks("S3", null, null, null, null, null, null, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<TaskResponse> body = (List<TaskResponse>) response.getBody();
+        assertEquals(1, body.size());
+        verify(taskOrganizerUseCase).getOrganizedTasks("S3", null);
+    }
+
+    @Test
+    void getTasksByStudentId_ShouldReturnOkWithList() {
+        Task t = Task.builder().id("10").studentId("S4").status(TaskStatus.IN_PROGRESS).build();
+        TaskResponse tr = TaskResponse.builder().id("10").status(TaskStatus.IN_PROGRESS).build();
+
+        when(getTasksUseCase.getTasksByStudentId("S4")).thenReturn(List.of(t));
+        when(taskDtoMapper.toResponse(t)).thenReturn(tr);
+
+        ResponseEntity<List<TaskResponse>> response = taskController.getTasksByStudentId("S4");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        verify(getTasksUseCase).getTasksByStudentId("S4");
+    }
+
+    @Test
+    void organizeTasks_ShouldReturnOkWithOrganizedTasks() {
+        Task t = Task.builder().id("20").studentId("S5").status(TaskStatus.TODO).build();
+        TaskResponse tr = TaskResponse.builder().id("20").status(TaskStatus.TODO).build();
+
+        when(organizeTasksUseCase.organizeTasksForStudent("S5")).thenReturn(List.of(t));
+        when(taskDtoMapper.toResponse(t)).thenReturn(tr);
+
+        ResponseEntity<List<TaskResponse>> response = taskController.organizeTasks("S5");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+        verify(organizeTasksUseCase).organizeTasksForStudent("S5");
+    }
+
+    // R41 — GET /{id}
+    @Test
+    void getTaskById_WhenExists_ShouldReturn200WithTaskResponse() {
+        Task task = Task.builder().id("task-abc").studentId("S6").status(TaskStatus.TODO).build();
+        TaskResponse tr = TaskResponse.builder().id("task-abc").status(TaskStatus.TODO).build();
+
+        when(getTaskByIdUseCase.getTaskById("task-abc")).thenReturn(task);
+        when(taskDtoMapper.toResponse(task)).thenReturn(tr);
+
+        ResponseEntity<TaskResponse> response = taskController.getTaskById("task-abc");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("task-abc", response.getBody().getId());
+        verify(getTaskByIdUseCase).getTaskById("task-abc");
+    }
+
+    @Test
+    void getTasks_WithCalendarViewAndSubjectFilter_ShouldPassSubjectIdToUseCase() {
+        LocalDateTime start = LocalDateTime.now();
+        LocalDateTime end   = LocalDateTime.now().plusDays(7);
+        Task t = Task.builder().id("7").status(TaskStatus.TODO).build();
+        TaskResponse tr = TaskResponse.builder().id("7").status(TaskStatus.TODO).build();
+
+        when(getTasksForViewUseCase.getCalendarView("S7", null, start, end, "sub-1", null))
+                .thenReturn(List.of(t));
+        when(taskDtoMapper.toResponse(t)).thenReturn(tr);
+
+        ResponseEntity<?> response = taskController.getTasks("S7", null, "calendar", null, start, end, "sub-1", null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<TaskResponse> body = (List<TaskResponse>) response.getBody();
+        assertEquals(1, body.size());
+        verify(getTasksForViewUseCase).getCalendarView("S7", null, start, end, "sub-1", null);
+    }
+
+    // R39 — PATCH /{id}
+    @Test
+    void updateTask_ShouldReturn200WithUpdatedTask() {
+        UpdateTaskRequest request = UpdateTaskRequest.builder().title("Updated title").build();
+        Task updated = Task.builder().id("u1").studentId("S8").title("Updated title").build();
+        TaskResponse tr = TaskResponse.builder().id("u1").title("Updated title").build();
+
+        when(updateTaskUseCase.updateTask("u1", "S8", request)).thenReturn(updated);
+        when(taskDtoMapper.toResponse(updated)).thenReturn(tr);
+
+        ResponseEntity<TaskResponse> response = taskController.updateTask("u1", "S8", request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Updated title", response.getBody().getTitle());
+        verify(updateTaskUseCase).updateTask("u1", "S8", request);
+    }
+
+    // R40 — DELETE /{id}?confirmed=true
+    @Test
+    void deleteTask_WhenConfirmed_ShouldReturn200() {
+        doNothing().when(deleteTaskUseCase).deleteTask("d1", "S9");
+
+        ResponseEntity<Map<String, String>> response = taskController.deleteTask("d1", "S9", true);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        verify(deleteTaskUseCase).deleteTask("d1", "S9");
+    }
+
+    @Test
+    void deleteTask_WhenNotConfirmed_ShouldReturn400() {
+        ResponseEntity<Map<String, String>> response = taskController.deleteTask("d2", "S9", false);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        verify(deleteTaskUseCase, never()).deleteTask(any(), any());
     }
 }

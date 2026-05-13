@@ -1,11 +1,12 @@
 package com.aibert.dosw;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootApplication
-public class TaskApplicationTest {
+@SpringBootTest
+@ActiveProfiles("inmemory")
+class TaskApplicationTest {
 
     @Test
     void contextLoads() {

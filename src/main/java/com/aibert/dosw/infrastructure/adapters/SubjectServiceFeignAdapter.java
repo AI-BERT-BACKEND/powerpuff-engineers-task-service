@@ -1,5 +1,6 @@
 package com.aibert.dosw.infrastructure.adapters;
 
+import com.aibert.dosw.application.dto.SubjectDTO;
 import com.aibert.dosw.domain.ports.out.SubjectValidationPort;
 import com.aibert.dosw.infrastructure.external.AcademicServiceClient;
 import feign.FeignException;
@@ -27,10 +28,27 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
 
     private final AcademicServiceClient academicServiceClient;
 
+    /**
+     * {@inheritDoc}
+     * Calls the academic-service {@code GET /api/subjects/{subjectId}} endpoint:
+     * <ul>
+     *   <li>HTTP 200 → returns {@code true}</li>
+     *   <li>HTTP 404 ({@link FeignException.NotFound}) → returns {@code false}</li>
+     *   <li>Any other {@link FeignException} → rethrown to the caller</li>
+     * </ul>
+     *
+     * @param subjectId the subject identifier to validate
+     * @return {@code true} if the subject exists; {@code false} if it returns 404
+     * @throws FeignException for any non-404 communication error with academic-service
+     */
     @Override
     public boolean exists(String subjectId) {
         try {
-            academicServiceClient.getSubjectById(subjectId);
+            SubjectDTO subject = academicServiceClient.getSubjectById(subjectId);
+            if (subject == null) {
+                log.warn("Fallback activo: no se pudo confirmar existencia de subject '{}'.", subjectId);
+                return false;
+            }
             return true;
         } catch (FeignException.NotFound e) {
             log.debug("academic-service: subject '{}' not found.", subjectId);

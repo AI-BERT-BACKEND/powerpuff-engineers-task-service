@@ -12,3 +12,7 @@ spring:
     user:
       name: test
       password: test
+
+clients:
+  academic-service:
+    url: http://localhost:8083
