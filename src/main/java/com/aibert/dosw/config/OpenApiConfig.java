@@ -30,7 +30,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Task Service API")
                         .version("1.0.0")
-                        .description("Task management API for students"))
+                        .description("API de gestión de tareas para estudiantes"))
                 .servers(List.of(
                         new Server().url("http://localhost:" + serverPort).description("Local")
                 ));
