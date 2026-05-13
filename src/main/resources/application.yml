@@ -142,7 +142,6 @@ feign:
         read-timeout: 10000
         logger-level: BASIC
 
-
 ---
 spring:
   config:
