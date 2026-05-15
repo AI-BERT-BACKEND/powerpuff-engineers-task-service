@@ -112,4 +112,32 @@ public class TaskRepositoryAdapter implements TaskRepositoryPort {
     public void deleteById(String taskId) {
         jpaRepository.deleteById(taskId);
     }
+
+    /**
+     * {@inheritDoc}
+     * Uses a native query to locate the task (bypassing {@code @SQLRestriction}),
+     * stamps {@code deletedAt}, and persists the updated entity.
+     */
+    @Override
+    public void softDelete(String taskId) {
+        jpaRepository.findByIdIncludingDeleted(taskId).ifPresent(entity -> {
+            entity.setDeletedAt(java.time.LocalDateTime.now());
+            jpaRepository.save(entity);
+        });
+    }
+
+    /**
+     * {@inheritDoc}
+     * Uses a native query to locate the task (bypassing {@code @SQLRestriction}).
+     * Clears {@code deletedAt} and persists if the task was indeed deleted.
+     */
+    @Override
+    public Optional<Task> restore(String taskId) {
+        return jpaRepository.findByIdIncludingDeleted(taskId)
+                .filter(e -> e.getDeletedAt() != null)
+                .map(e -> {
+                    e.setDeletedAt(null);
+                    return mapper.toDomain(jpaRepository.save(e));
+                });
+    }
 }

@@ -57,6 +57,7 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
     public List<Task> findByStudentId(String studentId) {
         return store.values().stream()
                 .filter(t -> studentId.equals(t.getStudentId()))
+                .filter(t -> t.getDeletedAt() == null)
                 .toList();
     }
 
@@ -78,7 +79,8 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
      */
     @Override
     public Optional<Task> findById(String taskId) {
-        return Optional.ofNullable(store.get(taskId));
+        return Optional.ofNullable(store.get(taskId))
+                .filter(t -> t.getDeletedAt() == null);
     }
 
     /**
@@ -91,6 +93,7 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
                                                   String subjectId, TaskType taskType) {
         return store.values().stream()
                 .filter(t -> studentId.equals(t.getStudentId()))
+                .filter(t -> t.getDeletedAt() == null)
                 .filter(t -> status == null || status.equals(t.getStatus()))
                 .filter(t -> startDate == null || (t.getDeadline() != null && !t.getDeadline().isBefore(startDate)))
                 .filter(t -> endDate == null || (t.getDeadline() != null && !t.getDeadline().isAfter(endDate)))
@@ -106,5 +109,32 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
     @Override
     public void deleteById(String taskId) {
         store.remove(taskId);
+    }
+
+    /**
+     * {@inheritDoc}
+     * Stamps {@code deletedAt} on the task in the store. No-op if absent.
+     */
+    @Override
+    public void softDelete(String taskId) {
+        Task task = store.get(taskId);
+        if (task != null) {
+            task.setDeletedAt(LocalDateTime.now());
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Looks up the task directly in the store (bypassing the deletedAt filter)
+     * and clears its {@code deletedAt} timestamp.
+     */
+    @Override
+    public Optional<Task> restore(String taskId) {
+        Task task = store.get(taskId);
+        if (task == null || task.getDeletedAt() == null) {
+            return Optional.empty();
+        }
+        task.setDeletedAt(null);
+        return Optional.of(task);
     }
 }

@@ -40,6 +40,7 @@ public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
             throw new TaskForbiddenException(taskId);
         }
 
-        taskRepositoryPort.deleteById(taskId);
+        // Soft-delete: delegate timestamp stamping to the repository port
+        taskRepositoryPort.softDelete(taskId);
     }
 }

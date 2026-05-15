@@ -81,4 +81,22 @@ public interface TaskRepositoryPort {
      * @param taskId the identifier of the task to delete
      */
     void deleteById(String taskId);
+
+    /**
+     * Soft-deletes the task with the given identifier by setting its {@code deletedAt} timestamp.
+     * The task will be excluded from all standard queries after this call.
+     * No-op if no task exists with that ID.
+     *
+     * @param taskId the identifier of the task to soft-delete
+     */
+    void softDelete(String taskId);
+
+    /**
+     * Restores a previously soft-deleted task by clearing its {@code deletedAt} timestamp.
+     * Returns empty if no task with the given ID exists or if the task is not deleted.
+     *
+     * @param taskId the identifier of the task to restore
+     * @return the restored {@link Task}, or empty if not found / not deleted
+     */
+    Optional<Task> restore(String taskId);
 }

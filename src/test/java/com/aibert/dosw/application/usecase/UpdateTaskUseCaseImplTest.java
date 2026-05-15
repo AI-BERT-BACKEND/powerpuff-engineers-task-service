@@ -1,6 +1,7 @@
 package com.aibert.dosw.application.usecase;
 
 import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
+import com.aibert.dosw.domain.exceptions.TaskConflictException;
 import com.aibert.dosw.domain.exceptions.TaskEditNotAllowedException;
 import com.aibert.dosw.domain.exceptions.TaskForbiddenException;
 import com.aibert.dosw.domain.exceptions.TaskNotFoundException;
@@ -16,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -209,5 +211,69 @@ class UpdateTaskUseCaseImplTest {
                 () -> updateTaskUseCase.updateTask("missing", "student-1", UpdateTaskRequest.builder().build()));
 
         verify(taskRepositoryPort, never()).save(any());
+    }
+
+    // ─── CA4: scheduledDate overlap → 409 ────────────────────────────────────────
+
+    @Test
+    void updateTask_WhenScheduledDateOverlapsAnotherTask_ShouldThrowTaskConflictException() {
+        LocalDateTime base = LocalDateTime.now().plusDays(1);
+        Task existing = buildTask("t-update", "student-1", TaskStatus.TODO, TaskPriority.MEDIUM,
+                LocalDateTime.now().plusDays(10));
+
+        // Another task occupies base → base+60min
+        Task sibling = Task.builder()
+                .id("t-sibling")
+                .studentId("student-1")
+                .status(TaskStatus.TODO)
+                .scheduledDate(base)
+                .estimatedDurationMinutes(60)
+                .build();
+
+        when(taskRepositoryPort.findById("t-update")).thenReturn(Optional.of(existing));
+        when(taskRepositoryPort.findByStudentId("student-1")).thenReturn(List.of(existing, sibling));
+
+        // Request scheduledDate that falls inside the sibling's window
+        UpdateTaskRequest request = UpdateTaskRequest.builder()
+                .scheduledDate(base.plusMinutes(30))
+                .estimatedDurationMinutes(60)
+                .build();
+
+        TaskConflictException ex = assertThrows(TaskConflictException.class,
+                () -> updateTaskUseCase.updateTask("t-update", "student-1", request));
+
+        assertTrue(ex.getMessage().contains("Fecha sugerida"),
+                "Exception message should include a suggested alternative date");
+        verify(taskRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    void updateTask_WhenScheduledDateDoesNotOverlap_ShouldSaveSuccessfully() {
+        LocalDateTime base = LocalDateTime.now().plusDays(1);
+        Task existing = buildTask("t-noop", "student-1", TaskStatus.TODO, TaskPriority.MEDIUM,
+                LocalDateTime.now().plusDays(10));
+
+        // Sibling occupies base → base+60min; new scheduledDate is at base+120 (no overlap)
+        Task sibling = Task.builder()
+                .id("t-sibling2")
+                .studentId("student-1")
+                .status(TaskStatus.TODO)
+                .scheduledDate(base)
+                .estimatedDurationMinutes(60)
+                .build();
+
+        when(taskRepositoryPort.findById("t-noop")).thenReturn(Optional.of(existing));
+        when(taskRepositoryPort.findByStudentId("student-1")).thenReturn(List.of(existing, sibling));
+        when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateTaskRequest request = UpdateTaskRequest.builder()
+                .scheduledDate(base.plusMinutes(120))
+                .estimatedDurationMinutes(60)
+                .build();
+
+        Task result = updateTaskUseCase.updateTask("t-noop", "student-1", request);
+
+        assertEquals(base.plusMinutes(120), result.getScheduledDate());
+        verify(taskRepositoryPort).save(any(Task.class));
     }
 }

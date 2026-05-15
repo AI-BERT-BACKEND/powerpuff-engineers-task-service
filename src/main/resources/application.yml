@@ -15,7 +15,7 @@
 # Base configuration (applies to all profiles)
 # -----------------------------------------------------------
 server:
-  port: 8084
+  port: 8085
 
 spring:
   application:
@@ -55,7 +55,9 @@ logging:
 
 clients:
   academic-service:
-    url: ${ACADEMIC_SERVICE_URL:http://localhost:8083}
+    url: ${ACADEMIC_SERVICE_URL:http://localhost:8084}
+  gamification-service:
+    url: ${GAMIFICATION_SERVICE_URL:http://localhost:8082}
 
 ---
 # -----------------------------------------------------------
@@ -116,7 +118,8 @@ spring:
 # Enables real communication with external microservices.
 #
 # Required environment variables:
-#   ACADEMIC_SERVICE_URL  — base URL for academic-service (e.g. http://academic-service:8083)
+#   ACADEMIC_SERVICE_URL      — base URL for academic-service     (e.g. http://academic-service:8084)
+#   GAMIFICATION_SERVICE_URL  — base URL for gamification-service (e.g. http://gamification-service:8082)
 #
 # NOTE: task-service does NOT call auth-service.
 # The API Gateway validates the JWT and injects X-User-Id header.
@@ -132,7 +135,9 @@ spring:
 
 clients:
   academic-service:
-    url: ${ACADEMIC_SERVICE_URL:http://localhost:8083}
+    url: ${ACADEMIC_SERVICE_URL:http://localhost:8084}
+  gamification-service:
+    url: ${GAMIFICATION_SERVICE_URL:http://localhost:8082}
 
 feign:
   client:
@@ -140,6 +145,10 @@ feign:
       academic-service:
         connect-timeout: 5000
         read-timeout: 10000
+        logger-level: BASIC
+      gamification-service:
+        connect-timeout: 3000
+        read-timeout: 5000
         logger-level: BASIC
 
 ---

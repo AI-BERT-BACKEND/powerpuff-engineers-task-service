@@ -32,4 +32,5 @@ public class Task {
     private TaskStatus status;
     private LocalDateTime scheduledDate;
     private LocalDateTime completedAt;
+    private LocalDateTime deletedAt;
 }

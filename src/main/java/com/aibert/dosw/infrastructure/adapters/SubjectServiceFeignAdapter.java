@@ -1,6 +1,7 @@
 package com.aibert.dosw.infrastructure.adapters;
 
 import com.aibert.dosw.application.dto.SubjectDTO;
+import com.aibert.dosw.domain.exceptions.ExternalServiceUnavailableException;
 import com.aibert.dosw.domain.ports.out.SubjectValidationPort;
 import com.aibert.dosw.infrastructure.external.AcademicServiceClient;
 import feign.FeignException;
@@ -46,8 +47,9 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
         try {
             SubjectDTO subject = academicServiceClient.getSubjectById(subjectId);
             if (subject == null) {
-                log.warn("Fallback activo: no se pudo confirmar existencia de subject '{}'.", subjectId);
-                return false;
+                log.warn("Fallback activo: academic-service no disponible al consultar subject '{}'.", subjectId);
+                throw new ExternalServiceUnavailableException(
+                        "El servicio académico no está disponible. Inténtelo más tarde.");
             }
             return true;
         } catch (FeignException.NotFound e) {

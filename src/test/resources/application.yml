@@ -16,3 +16,5 @@ spring:
 clients:
   academic-service:
     url: http://localhost:8083
+  gamification-service:
+    url: http://localhost:8082

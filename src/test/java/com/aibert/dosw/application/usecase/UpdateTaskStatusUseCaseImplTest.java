@@ -5,6 +5,7 @@ import com.aibert.dosw.domain.exceptions.TaskNotFoundException;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.ports.out.TaskEventPort;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,9 @@ class UpdateTaskStatusUseCaseImplTest {
 
     @Mock
     private TaskRepositoryPort taskRepositoryPort;
+
+    @Mock
+    private TaskEventPort taskEventPort;
 
     @InjectMocks
     private UpdateTaskStatusUseCaseImpl updateTaskStatusUseCase;

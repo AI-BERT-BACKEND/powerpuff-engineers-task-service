@@ -3,6 +3,7 @@ package com.aibert.dosw.application.dto.request;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskType;
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,4 +45,11 @@ public class UpdateTaskRequest {
     /** New estimated duration in minutes. Must be positive when provided. */
     @Positive(message = "La duración estimada debe ser positiva")
     private Integer estimatedDurationMinutes;
+
+    /**
+     * Explicit scheduled date for the task. Must be present or future when provided.
+     * If it overlaps with another task's scheduled window, a 409 Conflict is returned.
+     */
+    @FutureOrPresent(message = "La fecha programada no puede ser en el pasado")
+    private LocalDateTime scheduledDate;
 }

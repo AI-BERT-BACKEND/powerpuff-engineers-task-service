@@ -1,10 +1,13 @@
 package com.aibert.dosw.entrypoints.advice;
 
+import com.aibert.dosw.domain.exceptions.ExternalServiceUnavailableException;
 import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
 import com.aibert.dosw.domain.exceptions.TaskConflictException;
 import com.aibert.dosw.domain.exceptions.TaskEditNotAllowedException;
 import com.aibert.dosw.domain.exceptions.TaskForbiddenException;
 import com.aibert.dosw.domain.exceptions.TaskNotFoundException;
+import feign.FeignException;
+import feign.Request;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -14,6 +17,9 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -93,5 +99,44 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().get("message").contains("task-id-55"));
+    }
+
+    @Test
+    void handleExternalServiceUnavailableException_ShouldReturnServiceUnavailable() {
+        ExternalServiceUnavailableException ex = new ExternalServiceUnavailableException(
+                "El servicio académico no está disponible. Inténtelo más tarde.");
+
+        ResponseEntity<Map<String, String>> response =
+                handler.handleExternalServiceUnavailableException(ex);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("El servicio académico no está disponible. Inténtelo más tarde.",
+                response.getBody().get("message"));
+    }
+
+    @Test
+    void handleFeignException_ShouldReturnServiceUnavailable() {
+        Request request = Request.create(Request.HttpMethod.GET, "/api/subjects/X",
+                Collections.emptyMap(), null, StandardCharsets.UTF_8, null);
+        FeignException ex = new FeignException.ServiceUnavailable("Service down", request,
+                null, Collections.emptyMap());
+
+        ResponseEntity<Map<String, String>> response = handler.handleFeignException(ex);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertNotNull(response.getBody().get("message"));
+    }
+
+    @Test
+    void handleGenericException_ShouldReturnInternalServerError() {
+        Exception ex = new RuntimeException("Unexpected failure");
+
+        ResponseEntity<Map<String, String>> response = handler.handleGenericException(ex);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertNotNull(response.getBody().get("message"));
     }
 }

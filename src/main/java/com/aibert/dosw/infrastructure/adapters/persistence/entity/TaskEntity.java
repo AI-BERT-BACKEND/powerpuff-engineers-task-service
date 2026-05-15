@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
  * A unique constraint on {@code (student_id, subject_id, title)} prevents duplicate tasks.
  */
 @Entity
+@SQLRestriction("deleted_at IS NULL")
 @Table(
     name = "tasks",
     uniqueConstraints = @UniqueConstraint(
@@ -68,4 +70,7 @@ public class TaskEntity {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

@@ -12,6 +12,7 @@ import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.model.TaskType;
 import com.aibert.dosw.domain.ports.in.CreateTaskUseCase;
 import com.aibert.dosw.domain.ports.in.DeleteTaskUseCase;
+import com.aibert.dosw.domain.ports.in.RestoreTaskUseCase;
 import com.aibert.dosw.domain.ports.in.GetTaskByIdUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
@@ -44,6 +45,7 @@ class TaskControllerTest {
     @Mock private UpdateTaskStatusUseCase updateTaskStatusUseCase;
     @Mock private UpdateTaskUseCase updateTaskUseCase;
     @Mock private DeleteTaskUseCase deleteTaskUseCase;
+    @Mock private RestoreTaskUseCase restoreTaskUseCase;
     @Mock private GetTasksForViewUseCase getTasksForViewUseCase;
     @Mock private GetTaskByIdUseCase getTaskByIdUseCase;
     @Mock private TaskDtoMapper taskDtoMapper;
@@ -174,12 +176,19 @@ class TaskControllerTest {
         when(getTasksUseCase.getTasksByStudentId("S4")).thenReturn(List.of(t));
         when(taskDtoMapper.toResponse(t)).thenReturn(tr);
 
-        ResponseEntity<List<TaskResponse>> response = taskController.getTasksByStudentId("S4");
+        ResponseEntity<?> response = taskController.getTasksByStudentId("S4", "S4");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().size());
         verify(getTasksUseCase).getTasksByStudentId("S4");
+    }
+
+    @Test
+    void getTasksByStudentId_WhenUserIdMismatch_ShouldReturn403() {
+        ResponseEntity<?> response = taskController.getTasksByStudentId("OTHER", "S4");
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        verify(getTasksUseCase, never()).getTasksByStudentId(any());
     }
 
     @Test
@@ -190,12 +199,19 @@ class TaskControllerTest {
         when(organizeTasksUseCase.organizeTasksForStudent("S5")).thenReturn(List.of(t));
         when(taskDtoMapper.toResponse(t)).thenReturn(tr);
 
-        ResponseEntity<List<TaskResponse>> response = taskController.organizeTasks("S5");
+        ResponseEntity<?> response = taskController.organizeTasks("S5", "S5");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().size());
         verify(organizeTasksUseCase).organizeTasksForStudent("S5");
+    }
+
+    @Test
+    void organizeTasks_WhenUserIdMismatch_ShouldReturn403() {
+        ResponseEntity<?> response = taskController.organizeTasks("OTHER", "S5");
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        verify(organizeTasksUseCase, never()).organizeTasksForStudent(any());
     }
 
     // R41 — GET /{id}
@@ -253,24 +269,29 @@ class TaskControllerTest {
         verify(updateTaskUseCase).updateTask("u1", "S8", request);
     }
 
-    // R40 — DELETE /{id}?confirmed=true
+    // R16 — DELETE /{id} (soft-delete, 204 No Content)
     @Test
-    void deleteTask_WhenConfirmed_ShouldReturn200() {
+    void deleteTask_WhenOwner_ShouldReturn204() {
         doNothing().when(deleteTaskUseCase).deleteTask("d1", "S9");
 
-        ResponseEntity<Map<String, String>> response = taskController.deleteTask("d1", "S9", true);
+        ResponseEntity<Void> response = taskController.deleteTask("d1", "S9");
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(deleteTaskUseCase).deleteTask("d1", "S9");
     }
 
+    // R16 — PATCH /{id}/restore (optional restore, 200)
     @Test
-    void deleteTask_WhenNotConfirmed_ShouldReturn400() {
-        ResponseEntity<Map<String, String>> response = taskController.deleteTask("d2", "S9", false);
+    void restoreTask_WhenOwnerAndTaskWasDeleted_ShouldReturn200() {
+        Task task = Task.builder().id("r1").studentId("S10").status(TaskStatus.TODO).build();
+        TaskResponse taskResponse = TaskResponse.builder().id("r1").status(TaskStatus.TODO).build();
+        when(restoreTaskUseCase.restoreTask("r1", "S10")).thenReturn(task);
+        when(taskDtoMapper.toResponse(task)).thenReturn(taskResponse);
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertNotNull(response.getBody());
-        verify(deleteTaskUseCase, never()).deleteTask(any(), any());
+        ResponseEntity<TaskResponse> result = taskController.restoreTask("r1", "S10");
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertNotNull(result.getBody());
+        verify(restoreTaskUseCase).restoreTask("r1", "S10");
     }
 }

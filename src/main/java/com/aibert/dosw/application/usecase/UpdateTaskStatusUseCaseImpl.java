@@ -6,6 +6,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
+import com.aibert.dosw.domain.ports.out.TaskEventPort;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
+    private final TaskEventPort taskEventPort;
 
     private static final int DEADLINE_URGENCY_HOURS = 24;
 
@@ -64,6 +66,11 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
         }
 
         Task saved = taskRepositoryPort.save(task);
+
+        // Notify gamification-service when a task is completed
+        if (TaskStatus.COMPLETED.equals(newStatus)) {
+            taskEventPort.notifyTaskCompleted(saved);
+        }
 
         // RN-04: recalculate urgency-based priority for remaining active tasks
         recalculatePriorityForActiveTasks(studentId);
