@@ -4,8 +4,6 @@ import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskType;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -19,30 +17,24 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateTaskRequest {
+public class UpdateTaskRequest {
 
-    @NotBlank(message = "El título es requerido")
     @Size(max = 200, message = "El título no puede superar los 200 caracteres")
     private String title;
 
     @Size(max = 500, message = "La descripción no puede superar los 500 caracteres")
     private String description;
 
-    @NotNull(message = "La duración estimada es requerida")
-    @Positive(message = "La duración estimada debe ser positiva")
-    @Max(value = 6000, message = "La duración estimada no puede superar las 100 horas (6000 minutos)")
-    private Integer estimatedDurationMinutes;
+    private String subjectId;
 
-    @NotNull(message = "La fecha límite es requerida")
+    private TaskType taskType;
+
     @Future(message = "La fecha límite no puede ser en el pasado")
     private LocalDateTime deadline;
 
-    @NotNull(message = "La prioridad es requerida")
     private TaskPriority priority;
 
-    @NotBlank(message = "La materia es requerida")
-    private String subjectId;
-
-    @NotNull(message = "El tipo de tarea es requerido")
-    private TaskType taskType;
+    @Positive(message = "La duración estimada debe ser positiva")
+    @Max(value = 6000, message = "La duración estimada no puede superar las 100 horas (6000 minutos)")
+    private Integer estimatedDurationMinutes;
 }

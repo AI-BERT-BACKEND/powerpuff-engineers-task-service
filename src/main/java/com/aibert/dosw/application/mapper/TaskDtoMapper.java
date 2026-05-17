@@ -15,6 +15,7 @@ public class TaskDtoMapper {
                 .estimatedDurationMinutes(request.getEstimatedDurationMinutes())
                 .deadline(request.getDeadline())
                 .priority(request.getPriority())
+                .taskType(request.getTaskType())
                 .studentId(studentId)
                 .subjectId(request.getSubjectId())
                 .build();
@@ -30,6 +31,7 @@ public class TaskDtoMapper {
                 .estimatedDurationMinutes(task.getEstimatedDurationMinutes())
                 .deadline(task.getDeadline())
                 .priority(task.getPriority())
+                .taskType(task.getTaskType())
                 .status(task.getStatus())
                 .scheduledDate(task.getScheduledDate())
                 .completedAt(task.getCompletedAt())

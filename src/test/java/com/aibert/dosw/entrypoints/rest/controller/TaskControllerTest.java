@@ -1,6 +1,7 @@
 package com.aibert.dosw.entrypoints.rest.controller;
 
 import com.aibert.dosw.application.dto.request.CreateTaskRequest;
+import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
@@ -9,11 +10,13 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.CreateTaskUseCase;
+import com.aibert.dosw.domain.ports.in.DeleteTaskUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
+import com.aibert.dosw.domain.ports.in.UpdateTaskUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,7 +32,6 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 class TaskControllerTest {
 
@@ -38,6 +40,8 @@ class TaskControllerTest {
     @Mock private OrganizeTasksUseCase organizeTasksUseCase;
     @Mock private TaskOrganizerUseCase taskOrganizerUseCase;
     @Mock private UpdateTaskStatusUseCase updateTaskStatusUseCase;
+    @Mock private UpdateTaskUseCase updateTaskUseCase;
+    @Mock private DeleteTaskUseCase deleteTaskUseCase;
     @Mock private GetTasksForViewUseCase getTasksForViewUseCase;
     @Mock private TaskDtoMapper taskDtoMapper;
 
@@ -73,30 +77,30 @@ class TaskControllerTest {
     @Test
     void updateTaskStatus_ShouldReturn200WithUpdatedTask() {
         UpdateTaskStatusRequest request = new UpdateTaskStatusRequest(TaskStatus.IN_PROGRESS);
-        Task updatedTask = Task.builder().id("t1").status(TaskStatus.IN_PROGRESS).build();
+        Task updatedTask = Task.builder().id("t1").studentId("S1").status(TaskStatus.IN_PROGRESS).build();
         TaskResponse expectedResponse = TaskResponse.builder().id("t1").status(TaskStatus.IN_PROGRESS).build();
 
-        when(updateTaskStatusUseCase.updateStatus("t1", TaskStatus.IN_PROGRESS)).thenReturn(updatedTask);
+        when(updateTaskStatusUseCase.updateStatus("t1", "S1", TaskStatus.IN_PROGRESS)).thenReturn(updatedTask);
         when(taskDtoMapper.toResponse(updatedTask)).thenReturn(expectedResponse);
 
-        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("t1", request);
+        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("S1", "t1", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(expectedResponse, response.getBody());
-        verify(updateTaskStatusUseCase).updateStatus("t1", TaskStatus.IN_PROGRESS);
+        verify(updateTaskStatusUseCase).updateStatus("t1", "S1", TaskStatus.IN_PROGRESS);
     }
 
     @Test
     void updateTaskStatus_WhenCompleted_ShouldReturnTaskWithCompletedAt() {
         UpdateTaskStatusRequest request = new UpdateTaskStatusRequest(TaskStatus.COMPLETED);
         LocalDateTime now = LocalDateTime.now();
-        Task updatedTask = Task.builder().id("t2").status(TaskStatus.COMPLETED).completedAt(now).build();
+        Task updatedTask = Task.builder().id("t2").studentId("S1").status(TaskStatus.COMPLETED).completedAt(now).build();
         TaskResponse expectedResponse = TaskResponse.builder().id("t2").status(TaskStatus.COMPLETED).completedAt(now).build();
 
-        when(updateTaskStatusUseCase.updateStatus("t2", TaskStatus.COMPLETED)).thenReturn(updatedTask);
+        when(updateTaskStatusUseCase.updateStatus("t2", "S1", TaskStatus.COMPLETED)).thenReturn(updatedTask);
         when(taskDtoMapper.toResponse(updatedTask)).thenReturn(expectedResponse);
 
-        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("t2", request);
+        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("S1", "t2", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody().getCompletedAt());
@@ -188,5 +192,34 @@ class TaskControllerTest {
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
         verify(organizeTasksUseCase).organizeTasksForStudent("S5");
+    }
+
+    @Test
+    void updateTask_ShouldReturn200WithUpdatedTask() {
+        UpdateTaskRequest request = UpdateTaskRequest.builder()
+                .title("Nuevo título")
+                .build();
+        Task updatedTask = Task.builder().id("t10").studentId("S1").title("Nuevo título").status(TaskStatus.TODO).build();
+        TaskResponse expectedResponse = TaskResponse.builder().id("t10").title("Nuevo título").status(TaskStatus.TODO).build();
+
+        when(updateTaskUseCase.updateTask("t10", "S1", request)).thenReturn(updatedTask);
+        when(taskDtoMapper.toResponse(updatedTask)).thenReturn(expectedResponse);
+
+        ResponseEntity<TaskResponse> response = taskController.updateTask("S1", "t10", request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expectedResponse, response.getBody());
+        verify(updateTaskUseCase).updateTask("t10", "S1", request);
+    }
+
+    @Test
+    void deleteTask_ShouldReturn204NoContent() {
+        doNothing().when(deleteTaskUseCase).deleteTask("t20", "S1");
+
+        ResponseEntity<Void> response = taskController.deleteTask("S1", "t20");
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertNull(response.getBody());
+        verify(deleteTaskUseCase).deleteTask("t20", "S1");
     }
 }

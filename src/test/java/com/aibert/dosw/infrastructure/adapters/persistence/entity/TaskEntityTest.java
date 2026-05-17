@@ -2,6 +2,7 @@ package com.aibert.dosw.infrastructure.adapters.persistence.entity;
 
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.model.TaskType;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -57,7 +58,7 @@ class TaskEntityTest {
     @Test
     void allArgsConstructor_ShouldSetAllFields() {
         TaskEntity e = new TaskEntity("e1", "S1", "MATH-101", "Title", "Desc",
-                60, deadline, TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, scheduled, null);
+                60, deadline, TaskPriority.MEDIUM, TaskType.TAREA, TaskStatus.IN_PROGRESS, scheduled, null);
 
         assertEquals("e1", e.getId());
         assertEquals(TaskPriority.MEDIUM, e.getPriority());

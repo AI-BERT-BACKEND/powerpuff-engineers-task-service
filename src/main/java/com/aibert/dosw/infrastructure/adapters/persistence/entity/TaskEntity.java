@@ -2,6 +2,7 @@ package com.aibert.dosw.infrastructure.adapters.persistence.entity;
 
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.model.TaskType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -49,6 +50,10 @@ public class TaskEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "priority", nullable = false, length = 20)
     private TaskPriority priority;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_type", nullable = false, length = 20)
+    private TaskType taskType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)

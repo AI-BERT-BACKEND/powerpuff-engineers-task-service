@@ -59,6 +59,11 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
     }
 
     @Override
+    public void deleteById(String taskId) {
+        store.remove(taskId);
+    }
+
+    @Override
     public List<Task> findByStudentIdWithFilters(String studentId, TaskStatus status,
                                                   LocalDateTime startDate, LocalDateTime endDate) {
         return store.values().stream()

@@ -1,6 +1,7 @@
 package com.aibert.dosw.entrypoints.rest.controller;
 
 import com.aibert.dosw.application.dto.request.CreateTaskRequest;
+import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
@@ -9,11 +10,13 @@ import com.aibert.dosw.domain.model.SortCriteriaEnum;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.CreateTaskUseCase;
+import com.aibert.dosw.domain.ports.in.DeleteTaskUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
+import com.aibert.dosw.domain.ports.in.UpdateTaskUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -23,10 +26,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,6 +53,8 @@ public class TaskController {
     private final OrganizeTasksUseCase organizeTasksUseCase;
     private final TaskOrganizerUseCase taskOrganizerUseCase;
     private final UpdateTaskStatusUseCase updateTaskStatusUseCase;
+    private final UpdateTaskUseCase updateTaskUseCase;
+    private final DeleteTaskUseCase deleteTaskUseCase;
     private final GetTasksForViewUseCase getTasksForViewUseCase;
     private final TaskDtoMapper taskDtoMapper;
 
@@ -107,14 +114,48 @@ public class TaskController {
             description = "Actualiza el estado de la tarea. Al marcar como COMPLETED, registra automáticamente completedAt.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Estado actualizado exitosamente"),
+            @ApiResponse(responseCode = "403", description = "No tienes permiso para actualizar esta tarea"),
             @ApiResponse(responseCode = "404", description = "Tarea no encontrada"),
             @ApiResponse(responseCode = "400", description = "Estado inválido")
     })
     public ResponseEntity<TaskResponse> updateTaskStatus(
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable String id,
             @Valid @RequestBody UpdateTaskStatusRequest request) {
-        Task updatedTask = updateTaskStatusUseCase.updateStatus(id, request.getStatus());
+        Task updatedTask = updateTaskStatusUseCase.updateStatus(id, userId, request.getStatus());
         return ResponseEntity.ok(taskDtoMapper.toResponse(updatedTask));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Editar una tarea (AIB-18.2)",
+            description = "Modifica los campos de una tarea existente. No se puede editar una tarea con estado 'Completada'.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Tarea actualizada exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o tarea completada"),
+            @ApiResponse(responseCode = "403", description = "No tienes permiso para editar esta tarea"),
+            @ApiResponse(responseCode = "404", description = "Tarea no encontrada")
+    })
+    public ResponseEntity<TaskResponse> updateTask(
+            @RequestHeader("X-User-Id") String userId,
+            @PathVariable String id,
+            @Valid @RequestBody UpdateTaskRequest request) {
+        Task updatedTask = updateTaskUseCase.updateTask(id, userId, request);
+        return ResponseEntity.ok(taskDtoMapper.toResponse(updatedTask));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Eliminar una tarea (AIB-18.3)",
+            description = "Elimina permanentemente una tarea. Solo el propietario puede eliminarla.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Tarea eliminada exitosamente"),
+            @ApiResponse(responseCode = "403", description = "No tienes permiso para eliminar esta tarea"),
+            @ApiResponse(responseCode = "404", description = "Tarea no encontrada")
+    })
+    public ResponseEntity<Void> deleteTask(
+            @RequestHeader("X-User-Id") String userId,
+            @PathVariable String id) {
+        deleteTaskUseCase.deleteTask(id, userId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/student/{studentId}")

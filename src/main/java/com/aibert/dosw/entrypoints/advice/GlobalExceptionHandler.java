@@ -2,6 +2,8 @@ package com.aibert.dosw.entrypoints.advice;
 
 import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
 import com.aibert.dosw.domain.exceptions.TaskConflictException;
+import com.aibert.dosw.domain.exceptions.TaskEditNotAllowedException;
+import com.aibert.dosw.domain.exceptions.TaskForbiddenException;
 import com.aibert.dosw.domain.exceptions.TaskNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +47,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleTaskNotFoundException(
             TaskNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TaskForbiddenException.class)
+    public ResponseEntity<Map<String, String>> handleTaskForbiddenException(
+            TaskForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TaskEditNotAllowedException.class)
+    public ResponseEntity<Map<String, String>> handleTaskEditNotAllowedException(
+            TaskEditNotAllowedException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("message", ex.getMessage()));
     }
 }

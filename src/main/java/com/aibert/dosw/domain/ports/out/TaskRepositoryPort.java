@@ -19,6 +19,8 @@ public interface TaskRepositoryPort {
 
     Optional<Task> findById(String taskId);
 
+    void deleteById(String taskId);
+
     List<Task> findByStudentIdWithFilters(String studentId, TaskStatus status,
                                           LocalDateTime startDate, LocalDateTime endDate);
 }

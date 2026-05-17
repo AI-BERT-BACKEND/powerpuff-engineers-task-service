@@ -4,5 +4,5 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskStatus;
 
 public interface UpdateTaskStatusUseCase {
-    Task updateStatus(String taskId, TaskStatus newStatus);
+    Task updateStatus(String taskId, String userId, TaskStatus newStatus);
 }

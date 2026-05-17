@@ -2,6 +2,7 @@ package com.aibert.dosw.application.dto.response;
 
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.model.TaskType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,6 +23,7 @@ public class TaskResponse {
     private Integer estimatedDurationMinutes;
     private LocalDateTime deadline;
     private TaskPriority priority;
+    private TaskType taskType;
     private TaskStatus status;
     private LocalDateTime scheduledDate;
     private LocalDateTime completedAt;

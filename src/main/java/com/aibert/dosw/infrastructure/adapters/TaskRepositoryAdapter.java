@@ -61,6 +61,11 @@ public class TaskRepositoryAdapter implements TaskRepositoryPort {
     }
 
     @Override
+    public void deleteById(String taskId) {
+        jpaRepository.deleteById(taskId);
+    }
+
+    @Override
     public List<Task> findByStudentIdWithFilters(String studentId, TaskStatus status,
                                                   LocalDateTime startDate, LocalDateTime endDate) {
         return jpaRepository.findByStudentId(studentId).stream()
