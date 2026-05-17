@@ -5,4 +5,5 @@ import java.util.List;
 
 public interface GetTasksUseCase {
     List<Task> getTasksByStudentId(String studentId);
+    Task getTaskById(String taskId);
 }

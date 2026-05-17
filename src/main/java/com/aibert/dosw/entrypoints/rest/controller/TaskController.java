@@ -164,6 +164,18 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Obtener detalle de una tarea (AIB-20)",
+            description = "Retorna el detalle completo de una tarea por su ID. Usado al hacer clic en una tarjeta del tablero Kanban.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Tarea obtenida exitosamente"),
+            @ApiResponse(responseCode = "404", description = "Tarea no encontrada")
+    })
+    public ResponseEntity<TaskResponse> getTaskById(@PathVariable String id) {
+        Task task = getTasksUseCase.getTaskById(id);
+        return ResponseEntity.ok(taskDtoMapper.toResponse(task));
+    }
+
     @GetMapping("/student/{studentId}")
     @Operation(summary = "Obtener tareas por estudiante",
             description = "Retorna todas las tareas de un estudiante.")

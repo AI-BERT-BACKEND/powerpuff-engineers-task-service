@@ -23,6 +23,7 @@ public class GetTasksForViewUseCaseImpl implements GetTasksForViewUseCase {
         List<Task> allTasks = taskRepositoryPort.findByStudentId(studentId);
 
         return allTasks.stream()
+                .filter(t -> t.getStatus() != null)
                 .collect(Collectors.groupingBy(Task::getStatus));
     }
 
