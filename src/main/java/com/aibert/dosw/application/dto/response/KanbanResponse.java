@@ -19,5 +19,6 @@ import java.util.List;
 public class KanbanResponse {
     private List<TaskResponse> todo;
     private List<TaskResponse> inProgress;
+    private List<TaskResponse> paused;
     private List<TaskResponse> completed;
 }

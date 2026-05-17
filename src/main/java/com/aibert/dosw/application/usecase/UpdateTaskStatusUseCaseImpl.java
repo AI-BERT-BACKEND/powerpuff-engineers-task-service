@@ -56,6 +56,8 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
             throw new TaskForbiddenException(taskId);
         }
 
+        validateTransition(task.getStatus(), newStatus, taskId);
+
         task.setStatus(newStatus);
 
         // RN-03: record or clear completedAt based on the target status
@@ -107,6 +109,13 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
 
         if (anyUpdated) {
             taskRepositoryPort.saveAll(activeTasks);
+        }
+    }
+
+    private void validateTransition(TaskStatus current, TaskStatus next, String taskId) {
+        if (TaskStatus.PAUSED.equals(next) && !TaskStatus.IN_PROGRESS.equals(current)) {
+            throw new IllegalStateException(
+                    "La tarea " + taskId + " solo puede pausarse desde IN_PROGRESS (estado actual: " + current + ")");
         }
     }
 }

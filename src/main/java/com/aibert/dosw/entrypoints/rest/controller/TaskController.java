@@ -5,6 +5,7 @@ import com.aibert.dosw.application.dto.request.RescheduleTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
 import com.aibert.dosw.application.dto.response.ConflictResponse;
+import com.aibert.dosw.application.dto.response.DailySummaryResponse;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
 import com.aibert.dosw.application.mapper.TaskDtoMapper;
@@ -15,12 +16,13 @@ import com.aibert.dosw.domain.model.TaskType;
 import com.aibert.dosw.domain.ports.in.CreateTaskUseCase;
 import com.aibert.dosw.domain.ports.in.DeleteTaskUseCase;
 import com.aibert.dosw.domain.ports.in.GetCalendarConflictsUseCase;
-import com.aibert.dosw.domain.ports.in.RestoreTaskUseCase;
+import com.aibert.dosw.domain.ports.in.GetDailySummaryUseCase;
 import com.aibert.dosw.domain.ports.in.GetTaskByIdUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
 import com.aibert.dosw.domain.ports.in.RescheduleTaskUseCase;
+import com.aibert.dosw.domain.ports.in.RestoreTaskUseCase;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskUseCase;
@@ -71,6 +73,7 @@ public class TaskController {
     private final GetTaskByIdUseCase getTaskByIdUseCase;
     private final RescheduleTaskUseCase rescheduleTaskUseCase;
     private final GetCalendarConflictsUseCase getCalendarConflictsUseCase;
+    private final GetDailySummaryUseCase getDailySummaryUseCase;
     private final TaskDtoMapper taskDtoMapper;
 
     /**
@@ -100,9 +103,9 @@ public class TaskController {
     /**
      * Retrieves tasks for the authenticated student, supporting three views:
      * <ul>
-     *   <li><b>No view param</b>: returns tasks sorted by {@code sortBy} criteria (default PRIORITY).</li>
+     *   <li><b>No view param</b>: returns tasks sorted by {@code sortBy} criteria (default PRIORITY). Supports {@code limit}.</li>
      *   <li><b>view=kanban</b>: returns tasks grouped into a {@link KanbanResponse}.</li>
-     *   <li><b>view=calendar</b>: returns tasks filtered by {@code status}, {@code startDate}, {@code endDate}.</li>
+     *   <li><b>view=calendar</b>: returns tasks filtered by {@code status}, {@code startDate}, {@code endDate}, {@code subjectId}, {@code taskType}.</li>
      * </ul>
      *
      * @param studentId the student identifier from the {@code X-User-Id} header
@@ -111,11 +114,14 @@ public class TaskController {
      * @param status    optional status filter (used only for the calendar view)
      * @param startDate optional deadline lower bound in ISO date-time format
      * @param endDate   optional deadline upper bound in ISO date-time format
+     * @param subjectId optional subject filter (used only for the calendar view)
+     * @param taskType  optional task type filter (used only for the calendar view)
+     * @param limit     optional max number of results (used only for the default sorted view)
      * @return HTTP 200 with a {@link KanbanResponse}, a {@code List<TaskResponse>}, or a sorted list
      */
     @GetMapping
     @Operation(summary = "Retrieve tasks for the authenticated student",
-            description = "Returns the student's tasks. Without parameters: sorted list. With 'view=kanban': tasks grouped by status (TODO, IN_PROGRESS, COMPLETED). With 'view=calendar': tasks filtered by date range, status, subject, or task type.")
+            description = "Returns the student's tasks. Without parameters: sorted list (supports 'limit=N'). With 'view=kanban': tasks grouped by status (TODO, IN_PROGRESS, PAUSED, COMPLETED). With 'view=calendar': tasks filtered by date range, status, subject, or task type.")
     @ApiResponse(responseCode = "200", description = "Task list retrieved successfully")
     public ResponseEntity<?> getTasks(
             @RequestHeader("X-User-Id") String studentId,
@@ -125,7 +131,8 @@ public class TaskController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(required = false) String subjectId,
-            @RequestParam(required = false) TaskType taskType) {
+            @RequestParam(required = false) TaskType taskType,
+            @RequestParam(required = false) Integer limit) {
 
         if ("kanban".equalsIgnoreCase(view)) {
             Map<TaskStatus, List<Task>> grouped = getTasksForViewUseCase.getKanbanView(studentId);
@@ -133,6 +140,8 @@ public class TaskController {
                     .todo(grouped.getOrDefault(TaskStatus.TODO, List.of()).stream()
                             .map(taskDtoMapper::toResponse).toList())
                     .inProgress(grouped.getOrDefault(TaskStatus.IN_PROGRESS, List.of()).stream()
+                            .map(taskDtoMapper::toResponse).toList())
+                    .paused(grouped.getOrDefault(TaskStatus.PAUSED, List.of()).stream()
                             .map(taskDtoMapper::toResponse).toList())
                     .completed(grouped.getOrDefault(TaskStatus.COMPLETED, List.of()).stream()
                             .map(taskDtoMapper::toResponse).toList())
@@ -147,7 +156,7 @@ public class TaskController {
             return ResponseEntity.ok(response);
         }
 
-        List<Task> tasks = taskOrganizerUseCase.getOrganizedTasks(studentId, sortBy);
+        List<Task> tasks = taskOrganizerUseCase.getOrganizedTasks(studentId, sortBy, limit);
         List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
         return ResponseEntity.ok(response);
     }
@@ -319,6 +328,38 @@ public class TaskController {
                     .body(Map.of("message", "No tienes permiso para ver las tareas de otro estudiante"));
         }
         List<Task> tasks = getTasksUseCase.getTasksByStudentId(studentId);
+        List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Returns a daily summary for the authenticated student.
+     *
+     * @param studentId the student identifier from the {@code X-User-Id} header
+     * @return HTTP 200 with a {@link DailySummaryResponse}
+     */
+    @GetMapping("/daily-summary")
+    @Operation(summary = "Resumen diario de tareas",
+            description = "Retorna el porcentaje de completado, total de horas programadas, tareas completadas y pendientes para el día de hoy.")
+    @ApiResponse(responseCode = "200", description = "Resumen diario obtenido exitosamente")
+    public ResponseEntity<DailySummaryResponse> getDailySummary(
+            @RequestHeader("X-User-Id") String studentId) {
+        return ResponseEntity.ok(getDailySummaryUseCase.getDailySummary(studentId));
+    }
+
+    /**
+     * Returns active tasks (TODO or IN_PROGRESS) sorted by priority descending (AIB-19).
+     *
+     * @param studentId the student identifier from the {@code X-User-Id} header
+     * @return HTTP 200 with a list of prioritized active {@link TaskResponse} objects
+     */
+    @GetMapping("/prioritized")
+    @Operation(summary = "Tareas activas priorizadas (AIB-19)",
+            description = "Retorna solo las tareas en estado TODO o IN_PROGRESS del estudiante, ordenadas de mayor a menor prioridad.")
+    @ApiResponse(responseCode = "200", description = "Tareas priorizadas obtenidas exitosamente")
+    public ResponseEntity<List<TaskResponse>> getPrioritizedActiveTasks(
+            @RequestHeader("X-User-Id") String studentId) {
+        List<Task> tasks = taskOrganizerUseCase.getPrioritizedActiveTasks(studentId);
         List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
         return ResponseEntity.ok(response);
     }

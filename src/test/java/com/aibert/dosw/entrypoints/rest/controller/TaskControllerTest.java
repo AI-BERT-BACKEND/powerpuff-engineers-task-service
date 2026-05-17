@@ -1,8 +1,9 @@
 package com.aibert.dosw.entrypoints.rest.controller;
 
 import com.aibert.dosw.application.dto.request.CreateTaskRequest;
-import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
+import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
+import com.aibert.dosw.application.dto.response.DailySummaryResponse;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
 import com.aibert.dosw.application.mapper.TaskDtoMapper;
@@ -12,11 +13,12 @@ import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.model.TaskType;
 import com.aibert.dosw.domain.ports.in.CreateTaskUseCase;
 import com.aibert.dosw.domain.ports.in.DeleteTaskUseCase;
-import com.aibert.dosw.domain.ports.in.RestoreTaskUseCase;
+import com.aibert.dosw.domain.ports.in.GetDailySummaryUseCase;
 import com.aibert.dosw.domain.ports.in.GetTaskByIdUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
+import com.aibert.dosw.domain.ports.in.RestoreTaskUseCase;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskUseCase;
@@ -48,6 +50,7 @@ class TaskControllerTest {
     @Mock private RestoreTaskUseCase restoreTaskUseCase;
     @Mock private GetTasksForViewUseCase getTasksForViewUseCase;
     @Mock private GetTaskByIdUseCase getTaskByIdUseCase;
+    @Mock private GetDailySummaryUseCase getDailySummaryUseCase;
     @Mock private TaskDtoMapper taskDtoMapper;
 
     @InjectMocks
@@ -122,7 +125,7 @@ class TaskControllerTest {
         when(getTasksForViewUseCase.getKanbanView("S1")).thenReturn(kanbanMap);
         when(taskDtoMapper.toResponse(t1)).thenReturn(tr1);
 
-        ResponseEntity<?> response = taskController.getTasks("S1", null, "kanban", null, null, null, null, null);
+        ResponseEntity<?> response = taskController.getTasks("S1", null, "kanban", null, null, null, null, null, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertInstanceOf(KanbanResponse.class, response.getBody());
@@ -142,7 +145,7 @@ class TaskControllerTest {
         when(getTasksForViewUseCase.getCalendarView("S2", TaskStatus.TODO, start, end, null, null)).thenReturn(List.of(t));
         when(taskDtoMapper.toResponse(t)).thenReturn(tr);
 
-        ResponseEntity<?> response = taskController.getTasks("S2", null, "calendar", TaskStatus.TODO, start, end, null, null);
+        ResponseEntity<?> response = taskController.getTasks("S2", null, "calendar", TaskStatus.TODO, start, end, null, null, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         @SuppressWarnings("unchecked")
@@ -156,16 +159,33 @@ class TaskControllerTest {
         Task t = Task.builder().id("3").status(TaskStatus.TODO).build();
         TaskResponse tr = TaskResponse.builder().id("3").status(TaskStatus.TODO).build();
 
-        when(taskOrganizerUseCase.getOrganizedTasks("S3", null)).thenReturn(List.of(t));
+        when(taskOrganizerUseCase.getOrganizedTasks("S3", null, null)).thenReturn(List.of(t));
         when(taskDtoMapper.toResponse(t)).thenReturn(tr);
 
-        ResponseEntity<?> response = taskController.getTasks("S3", null, null, null, null, null, null, null);
+        ResponseEntity<?> response = taskController.getTasks("S3", null, null, null, null, null, null, null, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         @SuppressWarnings("unchecked")
         List<TaskResponse> body = (List<TaskResponse>) response.getBody();
         assertEquals(1, body.size());
-        verify(taskOrganizerUseCase).getOrganizedTasks("S3", null);
+        verify(taskOrganizerUseCase).getOrganizedTasks("S3", null, null);
+    }
+
+    @Test
+    void getTasks_WithLimitParam_ShouldReturnLimitedList() {
+        Task t = Task.builder().id("3").status(TaskStatus.TODO).build();
+        TaskResponse tr = TaskResponse.builder().id("3").status(TaskStatus.TODO).build();
+
+        when(taskOrganizerUseCase.getOrganizedTasks("S3", null, 5)).thenReturn(List.of(t));
+        when(taskDtoMapper.toResponse(t)).thenReturn(tr);
+
+        ResponseEntity<?> response = taskController.getTasks("S3", null, null, null, null, null, null, null, 5);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        @SuppressWarnings("unchecked")
+        List<TaskResponse> body = (List<TaskResponse>) response.getBody();
+        assertEquals(1, body.size());
+        verify(taskOrganizerUseCase).getOrganizedTasks("S3", null, 5);
     }
 
     @Test
@@ -242,7 +262,7 @@ class TaskControllerTest {
                 .thenReturn(List.of(t));
         when(taskDtoMapper.toResponse(t)).thenReturn(tr);
 
-        ResponseEntity<?> response = taskController.getTasks("S7", null, "calendar", null, start, end, "sub-1", null);
+        ResponseEntity<?> response = taskController.getTasks("S7", null, "calendar", null, start, end, "sub-1", null, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         @SuppressWarnings("unchecked")
@@ -293,5 +313,25 @@ class TaskControllerTest {
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
         verify(restoreTaskUseCase).restoreTask("r1", "S10");
+    }
+
+    @Test
+    void getDailySummary_ShouldReturn200WithSummary() {
+        DailySummaryResponse summary = DailySummaryResponse.builder()
+                .completionPercentage(75)
+                .totalScheduledHours(4.5)
+                .completedCount(3)
+                .pendingCount(1)
+                .build();
+
+        when(getDailySummaryUseCase.getDailySummary("S1")).thenReturn(summary);
+
+        ResponseEntity<DailySummaryResponse> response = taskController.getDailySummary("S1");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(75, response.getBody().getCompletionPercentage());
+        assertEquals(3, response.getBody().getCompletedCount());
+        verify(getDailySummaryUseCase).getDailySummary("S1");
     }
 }

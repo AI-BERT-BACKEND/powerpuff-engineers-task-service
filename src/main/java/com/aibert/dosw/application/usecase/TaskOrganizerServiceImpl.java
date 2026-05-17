@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Spring service implementing the {@link TaskOrganizerUseCase} input port.
@@ -25,29 +26,51 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
     private static final int DEADLINE_URGENCY_HOURS = 24;
+    private static final Set<TaskStatus> ACTIVE_STATUSES = Set.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS);
 
     /**
      * {@inheritDoc}
-     * <p>Only active tasks ({@code TODO} and {@code IN_PROGRESS}) are included in the result,
-     * per R12 input scope. After escalation, applies a comparator built from {@code sortCriteria}.
-     * When {@code sortCriteria} is {@code null}, defaults to {@code PRIORITY} ordering.</p>
+     * <p>Delegates to the overloaded method with {@code limit = null}.</p>
      *
      * @param studentId    the student's identifier
      * @param sortCriteria the desired sort order; {@code null} defaults to {@code PRIORITY}
-     * @return the sorted list of active tasks
+     * @return the sorted list of tasks
      */
     @Override
     public List<Task> getOrganizedTasks(String studentId, SortCriteriaEnum sortCriteria) {
-        List<Task> tasks = taskRepositoryPort.findByStudentId(studentId).stream()
-                .filter(t -> t.getStatus() != TaskStatus.COMPLETED)
-                .collect(java.util.stream.Collectors.toList());
+        return getOrganizedTasks(studentId, sortCriteria, null);
+    }
+
+    @Override
+    public List<Task> getOrganizedTasks(String studentId, SortCriteriaEnum sortCriteria, Integer limit) {
+        List<Task> tasks = taskRepositoryPort.findByStudentId(studentId);
 
         escalatePriorityForUrgentTasks(tasks);
 
         SortCriteriaEnum criteria = sortCriteria != null ? sortCriteria : SortCriteriaEnum.PRIORITY;
 
-        return tasks.stream()
+        List<Task> sorted = tasks.stream()
                 .sorted(buildComparator(criteria))
+                .toList();
+
+        if (limit != null && limit > 0) {
+            return sorted.stream().limit(limit).toList();
+        }
+        return sorted;
+    }
+
+    @Override
+    public List<Task> getPrioritizedActiveTasks(String studentId) {
+        List<Task> allTasks = taskRepositoryPort.findByStudentId(studentId);
+
+        List<Task> activeTasks = allTasks.stream()
+                .filter(t -> t.getStatus() != null && ACTIVE_STATUSES.contains(t.getStatus()))
+                .toList();
+
+        escalatePriorityForUrgentTasks(activeTasks);
+
+        return activeTasks.stream()
+                .sorted(buildComparator(SortCriteriaEnum.PRIORITY))
                 .toList();
     }
 

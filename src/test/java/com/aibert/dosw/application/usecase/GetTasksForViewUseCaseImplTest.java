@@ -95,6 +95,20 @@ class GetTasksForViewUseCaseImplTest {
         assertEquals(2, result.size());
     }
 
+    @Test
+    void getKanbanView_WhenTaskHasNullStatus_ShouldExcludeItAndNotThrowNPE() {
+        Task nullStatusTask = Task.builder().id("99").studentId("S1").title("Broken task").status(null).build();
+        Task validTask = task("1", TaskStatus.TODO);
+
+        when(taskRepositoryPort.findByStudentId("S1")).thenReturn(List.of(nullStatusTask, validTask));
+
+        Map<TaskStatus, List<Task>> kanban = getTasksForViewUseCase.getKanbanView("S1");
+
+        assertNotNull(kanban);
+        assertNull(kanban.get(null));
+        assertEquals(1, kanban.get(TaskStatus.TODO).size());
+    }
+
     private Task task(String id, TaskStatus status) {
         return Task.builder()
                 .id(id)
