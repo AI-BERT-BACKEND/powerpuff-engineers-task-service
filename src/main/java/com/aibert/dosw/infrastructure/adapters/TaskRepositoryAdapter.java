@@ -91,11 +91,6 @@ public class TaskRepositoryAdapter implements TaskRepositoryPort {
      * excluded when date filters are active.
      */
     @Override
-    public void deleteById(String taskId) {
-        jpaRepository.deleteById(taskId);
-    }
-
-    @Override
     public List<Task> findByStudentIdWithFilters(String studentId, TaskStatus status,
                                                   LocalDateTime startDate, LocalDateTime endDate,
                                                   String subjectId, TaskType taskType) {

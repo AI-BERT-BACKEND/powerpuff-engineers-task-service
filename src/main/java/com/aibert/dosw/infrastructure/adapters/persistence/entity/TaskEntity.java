@@ -62,10 +62,6 @@ public class TaskEntity {
     private TaskPriority priority;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "task_type", nullable = false, length = 20)
-    private TaskType taskType;
-
-    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private TaskStatus status;
 

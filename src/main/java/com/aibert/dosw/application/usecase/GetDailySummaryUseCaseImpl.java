@@ -24,7 +24,7 @@ public class GetDailySummaryUseCaseImpl implements GetDailySummaryUseCase {
         LocalDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
 
         List<Task> todayTasks = taskRepositoryPort.findByStudentIdWithFilters(
-                studentId, null, startOfDay, endOfDay);
+                studentId, null, startOfDay, endOfDay, null, null);
 
         int completedCount = (int) todayTasks.stream()
                 .filter(t -> TaskStatus.COMPLETED.equals(t.getStatus()))

@@ -29,7 +29,7 @@ class GetDailySummaryUseCaseImplTest {
 
     @Test
     void getDailySummary_WhenNoTasksToday_ShouldReturnZeroPercentage() {
-        when(taskRepositoryPort.findByStudentIdWithFilters(eq("S1"), isNull(), any(), any()))
+        when(taskRepositoryPort.findByStudentIdWithFilters(eq("S1"), isNull(), any(), any(), any(), any()))
                 .thenReturn(List.of());
 
         DailySummaryResponse result = getDailySummaryUseCase.getDailySummary("S1");
@@ -47,7 +47,7 @@ class GetDailySummaryUseCaseImplTest {
         Task t2 = Task.builder().id("2").studentId("S1").status(TaskStatus.COMPLETED)
                 .estimatedDurationMinutes(120).build();
 
-        when(taskRepositoryPort.findByStudentIdWithFilters(eq("S1"), isNull(), any(), any()))
+        when(taskRepositoryPort.findByStudentIdWithFilters(eq("S1"), isNull(), any(), any(), any(), any()))
                 .thenReturn(List.of(t1, t2));
 
         DailySummaryResponse result = getDailySummaryUseCase.getDailySummary("S1");
@@ -67,7 +67,7 @@ class GetDailySummaryUseCaseImplTest {
         Task inProgress = Task.builder().id("3").studentId("S1").status(TaskStatus.IN_PROGRESS)
                 .estimatedDurationMinutes(60).build();
 
-        when(taskRepositoryPort.findByStudentIdWithFilters(eq("S1"), isNull(), any(), any()))
+        when(taskRepositoryPort.findByStudentIdWithFilters(eq("S1"), isNull(), any(), any(), any(), any()))
                 .thenReturn(List.of(completed, pending, inProgress));
 
         DailySummaryResponse result = getDailySummaryUseCase.getDailySummary("S1");
@@ -85,7 +85,7 @@ class GetDailySummaryUseCaseImplTest {
         Task t2 = Task.builder().id("2").studentId("S1").status(TaskStatus.TODO)
                 .estimatedDurationMinutes(60).build();
 
-        when(taskRepositoryPort.findByStudentIdWithFilters(eq("S1"), isNull(), any(), any()))
+        when(taskRepositoryPort.findByStudentIdWithFilters(eq("S1"), isNull(), any(), any(), any(), any()))
                 .thenReturn(List.of(t1, t2));
 
         DailySummaryResponse result = getDailySummaryUseCase.getDailySummary("S1");
