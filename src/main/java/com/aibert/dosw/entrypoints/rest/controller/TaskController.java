@@ -183,6 +183,17 @@ public class TaskController {
         return ResponseEntity.ok(getDailySummaryUseCase.getDailySummary(studentId));
     }
 
+    @GetMapping("/prioritized")
+    @Operation(summary = "Tareas activas priorizadas (AIB-19)",
+            description = "Retorna solo las tareas en estado TODO o IN_PROGRESS del estudiante, ordenadas de mayor a menor prioridad. Se invoca automáticamente para el organizador inteligente.")
+    @ApiResponse(responseCode = "200", description = "Tareas priorizadas obtenidas exitosamente")
+    public ResponseEntity<List<TaskResponse>> getPrioritizedActiveTasks(
+            @RequestHeader("X-User-Id") String studentId) {
+        List<Task> tasks = taskOrganizerUseCase.getPrioritizedActiveTasks(studentId);
+        List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/student/{studentId}/organize")
     @Operation(summary = "Organizar tareas (Calendario)",
             description = "Organiza y asigna fechas a las tareas pendientes del estudiante.")

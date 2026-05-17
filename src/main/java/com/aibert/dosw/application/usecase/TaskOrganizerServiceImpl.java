@@ -3,6 +3,7 @@ package com.aibert.dosw.application.usecase;
 import com.aibert.dosw.domain.model.SortCriteriaEnum;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
+import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +21,7 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
     private static final int DEADLINE_URGENCY_HOURS = 24;
+    private static final Set<TaskStatus> ACTIVE_STATUSES = Set.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS);
 
     @Override
     public List<Task> getOrganizedTasks(String studentId, SortCriteriaEnum sortCriteria) {
@@ -41,6 +44,21 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
             return sorted.stream().limit(limit).toList();
         }
         return sorted;
+    }
+
+    @Override
+    public List<Task> getPrioritizedActiveTasks(String studentId) {
+        List<Task> allTasks = taskRepositoryPort.findByStudentId(studentId);
+
+        List<Task> activeTasks = allTasks.stream()
+                .filter(t -> t.getStatus() != null && ACTIVE_STATUSES.contains(t.getStatus()))
+                .toList();
+
+        escalatePriorityForUrgentTasks(activeTasks);
+
+        return activeTasks.stream()
+                .sorted(buildComparator(SortCriteriaEnum.PRIORITY))
+                .toList();
     }
 
     private void escalatePriorityForUrgentTasks(List<Task> tasks) {
