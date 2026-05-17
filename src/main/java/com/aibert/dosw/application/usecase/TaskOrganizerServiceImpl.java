@@ -22,15 +22,25 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
 
     @Override
     public List<Task> getOrganizedTasks(String studentId, SortCriteriaEnum sortCriteria) {
+        return getOrganizedTasks(studentId, sortCriteria, null);
+    }
+
+    @Override
+    public List<Task> getOrganizedTasks(String studentId, SortCriteriaEnum sortCriteria, Integer limit) {
         List<Task> tasks = taskRepositoryPort.findByStudentId(studentId);
 
         escalatePriorityForUrgentTasks(tasks);
 
         SortCriteriaEnum criteria = sortCriteria != null ? sortCriteria : SortCriteriaEnum.PRIORITY;
 
-        return tasks.stream()
+        List<Task> sorted = tasks.stream()
                 .sorted(buildComparator(criteria))
                 .toList();
+
+        if (limit != null && limit > 0) {
+            return sorted.stream().limit(limit).toList();
+        }
+        return sorted;
     }
 
     private void escalatePriorityForUrgentTasks(List<Task> tasks) {

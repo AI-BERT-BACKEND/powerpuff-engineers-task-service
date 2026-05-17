@@ -5,15 +5,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class KanbanResponse {
-    private List<TaskResponse> todo;
-    private List<TaskResponse> inProgress;
-    private List<TaskResponse> paused;
-    private List<TaskResponse> completed;
+public class DailySummaryResponse {
+    private int completionPercentage;
+    private double totalScheduledHours;
+    private int completedCount;
+    private int pendingCount;
 }

@@ -26,6 +26,8 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
             throw new TaskForbiddenException(taskId);
         }
 
+        validateTransition(task.getStatus(), newStatus, taskId);
+
         task.setStatus(newStatus);
 
         if (TaskStatus.COMPLETED.equals(newStatus)) {
@@ -35,5 +37,12 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
         }
 
         return taskRepositoryPort.save(task);
+    }
+
+    private void validateTransition(TaskStatus current, TaskStatus next, String taskId) {
+        if (TaskStatus.PAUSED.equals(next) && !TaskStatus.IN_PROGRESS.equals(current)) {
+            throw new IllegalStateException(
+                    "La tarea " + taskId + " solo puede pausarse desde IN_PROGRESS (estado actual: " + current + ")");
+        }
     }
 }

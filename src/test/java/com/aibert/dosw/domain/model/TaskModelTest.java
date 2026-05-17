@@ -84,9 +84,10 @@ class TaskModelTest {
 
     @Test
     void taskStatus_ShouldHaveCorrectValues() {
-        assertEquals(3, TaskStatus.values().length);
+        assertEquals(4, TaskStatus.values().length);
         assertEquals(TaskStatus.TODO, TaskStatus.valueOf("TODO"));
         assertEquals(TaskStatus.IN_PROGRESS, TaskStatus.valueOf("IN_PROGRESS"));
+        assertEquals(TaskStatus.PAUSED, TaskStatus.valueOf("PAUSED"));
         assertEquals(TaskStatus.COMPLETED, TaskStatus.valueOf("COMPLETED"));
     }
 

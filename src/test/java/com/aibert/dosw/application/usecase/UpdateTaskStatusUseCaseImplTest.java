@@ -95,4 +95,38 @@ class UpdateTaskStatusUseCaseImplTest {
                 () -> updateTaskStatusUseCase.updateStatus("t5", "OTHER_USER", TaskStatus.IN_PROGRESS));
         verify(taskRepositoryPort, never()).save(any());
     }
+
+    @Test
+    void updateStatus_WhenPausingFromInProgress_ShouldAllowTransition() {
+        Task existing = Task.builder().id("t6").studentId("S1").status(TaskStatus.IN_PROGRESS).build();
+        when(taskRepositoryPort.findById("t6")).thenReturn(Optional.of(existing));
+        when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Task result = updateTaskStatusUseCase.updateStatus("t6", "S1", TaskStatus.PAUSED);
+
+        assertEquals(TaskStatus.PAUSED, result.getStatus());
+        verify(taskRepositoryPort).save(any(Task.class));
+    }
+
+    @Test
+    void updateStatus_WhenPausingFromTodo_ShouldThrowIllegalStateException() {
+        Task existing = Task.builder().id("t7").studentId("S1").status(TaskStatus.TODO).build();
+        when(taskRepositoryPort.findById("t7")).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalStateException.class,
+                () -> updateTaskStatusUseCase.updateStatus("t7", "S1", TaskStatus.PAUSED));
+        verify(taskRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_WhenResumingFromPaused_ShouldAllowTransitionToInProgress() {
+        Task existing = Task.builder().id("t8").studentId("S1").status(TaskStatus.PAUSED).build();
+        when(taskRepositoryPort.findById("t8")).thenReturn(Optional.of(existing));
+        when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Task result = updateTaskStatusUseCase.updateStatus("t8", "S1", TaskStatus.IN_PROGRESS);
+
+        assertEquals(TaskStatus.IN_PROGRESS, result.getStatus());
+        verify(taskRepositoryPort).save(any(Task.class));
+    }
 }

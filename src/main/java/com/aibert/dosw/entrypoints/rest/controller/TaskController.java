@@ -3,6 +3,7 @@ package com.aibert.dosw.entrypoints.rest.controller;
 import com.aibert.dosw.application.dto.request.CreateTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
+import com.aibert.dosw.application.dto.response.DailySummaryResponse;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
 import com.aibert.dosw.application.mapper.TaskDtoMapper;
@@ -11,6 +12,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.CreateTaskUseCase;
 import com.aibert.dosw.domain.ports.in.DeleteTaskUseCase;
+import com.aibert.dosw.domain.ports.in.GetDailySummaryUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
@@ -56,6 +58,7 @@ public class TaskController {
     private final UpdateTaskUseCase updateTaskUseCase;
     private final DeleteTaskUseCase deleteTaskUseCase;
     private final GetTasksForViewUseCase getTasksForViewUseCase;
+    private final GetDailySummaryUseCase getDailySummaryUseCase;
     private final TaskDtoMapper taskDtoMapper;
 
     @PostMapping
@@ -75,7 +78,7 @@ public class TaskController {
 
     @GetMapping
     @Operation(summary = "Obtener tareas (R12 y R13)",
-            description = "Sin 'view': retorna tareas ordenadas (R12). Con 'view=kanban': agrupadas por estado. Con 'view=calendar': filtradas por fecha/estado.")
+            description = "Sin 'view': retorna tareas ordenadas (R12). Con 'view=kanban': agrupadas por estado. Con 'view=calendar': filtradas por fecha/estado. Con 'limit=N': retorna solo las N primeras tareas.")
     @ApiResponse(responseCode = "200", description = "Lista de tareas obtenida exitosamente")
     public ResponseEntity<?> getTasks(
             @RequestHeader("X-User-Id") String studentId,
@@ -83,7 +86,8 @@ public class TaskController {
             @RequestParam(required = false) String view,
             @RequestParam(required = false) TaskStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) Integer limit) {
 
         if ("kanban".equalsIgnoreCase(view)) {
             Map<TaskStatus, List<Task>> grouped = getTasksForViewUseCase.getKanbanView(studentId);
@@ -91,6 +95,8 @@ public class TaskController {
                     .todo(grouped.getOrDefault(TaskStatus.TODO, List.of()).stream()
                             .map(taskDtoMapper::toResponse).toList())
                     .inProgress(grouped.getOrDefault(TaskStatus.IN_PROGRESS, List.of()).stream()
+                            .map(taskDtoMapper::toResponse).toList())
+                    .paused(grouped.getOrDefault(TaskStatus.PAUSED, List.of()).stream()
                             .map(taskDtoMapper::toResponse).toList())
                     .completed(grouped.getOrDefault(TaskStatus.COMPLETED, List.of()).stream()
                             .map(taskDtoMapper::toResponse).toList())
@@ -104,7 +110,7 @@ public class TaskController {
             return ResponseEntity.ok(response);
         }
 
-        List<Task> tasks = taskOrganizerUseCase.getOrganizedTasks(studentId, sortBy);
+        List<Task> tasks = taskOrganizerUseCase.getOrganizedTasks(studentId, sortBy, limit);
         List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
         return ResponseEntity.ok(response);
     }
@@ -166,6 +172,15 @@ public class TaskController {
         List<Task> tasks = getTasksUseCase.getTasksByStudentId(studentId);
         List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/daily-summary")
+    @Operation(summary = "Resumen diario de tareas",
+            description = "Retorna el porcentaje de completado, total de horas programadas, tareas completadas y pendientes para el día de hoy.")
+    @ApiResponse(responseCode = "200", description = "Resumen diario obtenido exitosamente")
+    public ResponseEntity<DailySummaryResponse> getDailySummary(
+            @RequestHeader("X-User-Id") String studentId) {
+        return ResponseEntity.ok(getDailySummaryUseCase.getDailySummary(studentId));
     }
 
     @PostMapping("/student/{studentId}/organize")
