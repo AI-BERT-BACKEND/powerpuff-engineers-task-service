@@ -29,6 +29,7 @@ public class Task {
     private Integer estimatedDurationMinutes;
     private LocalDateTime deadline;
     private TaskPriority priority;
+    private TaskType taskType;
     private TaskStatus status;
     private LocalDateTime scheduledDate;
     private LocalDateTime completedAt;

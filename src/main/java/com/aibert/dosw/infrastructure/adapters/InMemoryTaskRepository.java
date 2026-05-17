@@ -88,6 +88,11 @@ public class InMemoryTaskRepository implements TaskRepositoryPort {
      * Tasks with a {@code null} deadline are excluded when date-range filters are active.
      */
     @Override
+    public void deleteById(String taskId) {
+        store.remove(taskId);
+    }
+
+    @Override
     public List<Task> findByStudentIdWithFilters(String studentId, TaskStatus status,
                                                   LocalDateTime startDate, LocalDateTime endDate,
                                                   String subjectId, TaskType taskType) {
