@@ -26,6 +26,8 @@ public abstract class TaskDtoMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "scheduledDate", ignore = true)
     @Mapping(target = "completedAt", ignore = true)
+    @Mapping(target = "statusChangedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
     public abstract Task toModel(CreateTaskRequest request, String studentId);
 
     /**
@@ -34,6 +36,7 @@ public abstract class TaskDtoMapper {
      * @param task the task domain object to convert
      * @return the corresponding API response DTO
      */
+    @Mapping(source = "statusChangedAt", target = "changedAt")
     public abstract TaskResponse toResponse(Task task);
 }
 

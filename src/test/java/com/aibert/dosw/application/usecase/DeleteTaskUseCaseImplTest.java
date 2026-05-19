@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,17 +46,18 @@ class DeleteTaskUseCaseImplTest {
     // ─── Happy path ─────────────────────────────────────────────────────────────
 
     @Test
-    void deleteTask_WhenOwnerAndTaskExists_ShouldDeleteSuccessfully() {
+    void deleteTask_WhenOwnerAndTaskExists_ShouldDeletePermanently() {
         Task task = buildTask("t1", "student-1");
         when(taskRepositoryPort.findById("t1")).thenReturn(Optional.of(task));
 
         deleteTaskUseCase.deleteTask("t1", "student-1");
 
         verify(taskRepositoryPort).deleteById("t1");
+        verify(taskRepositoryPort, never()).softDelete(any());
     }
 
     @Test
-    void deleteTask_WhenOwnerAndTaskIsCompleted_ShouldDeleteSuccessfully() {
+    void deleteTask_WhenOwnerAndTaskIsCompleted_ShouldDeletePermanently() {
         Task task = buildTask("t2", "student-1");
         task.setStatus(TaskStatus.COMPLETED);
         when(taskRepositoryPort.findById("t2")).thenReturn(Optional.of(task));
@@ -63,6 +65,20 @@ class DeleteTaskUseCaseImplTest {
         deleteTaskUseCase.deleteTask("t2", "student-1");
 
         verify(taskRepositoryPort).deleteById("t2");
+    }
+
+    @Test
+    void deleteTask_WhenDeleted_TaskShouldNoLongerExist() {
+        Task task = buildTask("t4", "student-1");
+        when(taskRepositoryPort.findById("t4"))
+                .thenReturn(Optional.of(task))
+                .thenReturn(Optional.empty());
+
+        deleteTaskUseCase.deleteTask("t4", "student-1");
+
+        verify(taskRepositoryPort).deleteById("t4");
+        // After hard-delete the task is gone
+        assert taskRepositoryPort.findById("t4").isEmpty();
     }
 
     // ─── Task not found ──────────────────────────────────────────────────────────

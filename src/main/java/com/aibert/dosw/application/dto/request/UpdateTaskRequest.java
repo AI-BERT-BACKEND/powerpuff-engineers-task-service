@@ -3,7 +3,10 @@ package com.aibert.dosw.application.dto.request;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskType;
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,9 +26,11 @@ import java.time.LocalDateTime;
 public class UpdateTaskRequest {
 
     /** New title for the task. Must not be blank when provided. */
+    @Size(max = 200, message = "Title must not exceed 200 characters")
     private String title;
 
     /** New description for the task. */
+    @Size(max = 500, message = "Description must not exceed 500 characters")
     private String description;
 
     /** New subject identifier. Must not be blank when provided. */
@@ -41,7 +46,15 @@ public class UpdateTaskRequest {
     /** New priority. */
     private TaskPriority priority;
 
-    /** New estimated duration in minutes. Must be positive when provided. */
+    /** New estimated duration in minutes. Must be positive and at most 6000 (100 h) when provided. */
     @Positive(message = "La duración estimada debe ser positiva")
+    @Max(value = 6000, message = "Estimated duration must not exceed 6000 minutes (100 hours)")
     private Integer estimatedDurationMinutes;
+
+    /**
+     * Explicit scheduled date for the task. Must be present or future when provided.
+     * If it overlaps with another task's scheduled window, a 409 Conflict is returned.
+     */
+    @FutureOrPresent(message = "La fecha programada no puede ser en el pasado")
+    private LocalDateTime scheduledDate;
 }

@@ -15,4 +15,5 @@ public interface GetTasksUseCase {
      * @return a list of tasks; empty if the student has no tasks
      */
     List<Task> getTasksByStudentId(String studentId);
+    Task getTaskById(String taskId);
 }

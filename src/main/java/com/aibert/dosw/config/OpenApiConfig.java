@@ -1,6 +1,7 @@
 package com.aibert.dosw.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,21 +19,37 @@ public class OpenApiConfig {
     @Value("${server.port:8084}")
     private int serverPort;
 
-    /**
-     * Creates and configures the {@link OpenAPI} bean used by SpringDoc
-     * to generate the Swagger UI and OpenAPI JSON/YAML documents.
-     *
-     * @return an {@link OpenAPI} instance with the service title, version, and local server URL
-     */
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Task Service API")
+                        .title("AIbert — Task Service API")
                         .version("1.0.0")
-                        .description("Task management API for students"))
+                        .description("""
+                                REST API for managing academic tasks within the AIbert student productivity platform.
+
+                                **Capabilities**
+                                - Create, read, update and permanently delete tasks.
+                                - Automatic priority calculation based on deadline proximity (escalates to CRITICAL within 24 hours).
+                                - Three task views: sorted list, Kanban board (Pending / In Progress / Completed), and interactive calendar.
+                                - Status transitions with completion timestamp tracking.
+                                - Calendar drag-and-drop: move a task's deadline or reschedule its work session.
+                                - Overlap detection for scheduled time blocks.
+                                - Prioritized active-task list with result caching.
+                                - Daily progress summary (completion percentage, scheduled hours, counts).
+
+                                **Authentication**
+                                All endpoints require the authenticated student identifier supplied by the API Gateway as the `X-User-Id` request header.
+
+                                **Task statuses:** `TODO` · `IN_PROGRESS` · `PAUSED` · `COMPLETED`
+
+                                **Task priorities:** `LOW` · `MEDIUM` · `HIGH` · `CRITICAL`
+                                """)
+                        .contact(new Contact()
+                                .name("AIbert Backend Team")
+                                .email("ai-bert-backend@powerpuff-engineers.dev")))
                 .servers(List.of(
-                        new Server().url("http://localhost:" + serverPort).description("Local")
+                        new Server().url("http://localhost:" + serverPort).description("Local development")
                 ));
     }
 }

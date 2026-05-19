@@ -6,8 +6,10 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
+import com.aibert.dosw.domain.ports.out.TaskEventPort;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,9 +24,11 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
+    private final TaskEventPort taskEventPort;
 
     private static final int DEADLINE_URGENCY_HOURS = 24;
 
@@ -54,7 +58,10 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
             throw new TaskForbiddenException(taskId);
         }
 
+        validateTransition(task.getStatus(), newStatus, taskId);
+
         task.setStatus(newStatus);
+        task.setStatusChangedAt(LocalDateTime.now());
 
         // RN-03: record or clear completedAt based on the target status
         if (TaskStatus.COMPLETED.equals(newStatus)) {
@@ -64,6 +71,13 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
         }
 
         Task saved = taskRepositoryPort.save(task);
+        log.info("AUDIT | operation=STATUS_CHANGE | studentId={} | taskId={} | newStatus={} | changedAt={}",
+                studentId, taskId, newStatus, saved.getStatusChangedAt());
+
+        // Notify gamification-service when a task is completed
+        if (TaskStatus.COMPLETED.equals(newStatus)) {
+            taskEventPort.notifyTaskCompleted(saved);
+        }
 
         // RN-04: recalculate urgency-based priority for remaining active tasks
         recalculatePriorityForActiveTasks(studentId);
@@ -100,6 +114,13 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
 
         if (anyUpdated) {
             taskRepositoryPort.saveAll(activeTasks);
+        }
+    }
+
+    private void validateTransition(TaskStatus current, TaskStatus next, String taskId) {
+        if (TaskStatus.PAUSED.equals(next) && !TaskStatus.IN_PROGRESS.equals(current)) {
+            throw new IllegalStateException(
+                    "La tarea " + taskId + " solo puede pausarse desde IN_PROGRESS (estado actual: " + current + ")");
         }
     }
 }

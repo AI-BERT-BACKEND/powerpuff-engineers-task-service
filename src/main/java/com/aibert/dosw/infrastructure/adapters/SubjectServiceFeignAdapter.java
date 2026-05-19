@@ -1,6 +1,7 @@
 package com.aibert.dosw.infrastructure.adapters;
 
 import com.aibert.dosw.application.dto.SubjectDTO;
+import com.aibert.dosw.domain.exceptions.ExternalServiceUnavailableException;
 import com.aibert.dosw.domain.ports.out.SubjectValidationPort;
 import com.aibert.dosw.infrastructure.external.AcademicServiceClient;
 import feign.FeignException;
@@ -30,24 +31,16 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
 
     /**
      * {@inheritDoc}
-     * Calls the academic-service {@code GET /api/subjects/{subjectId}} endpoint:
-     * <ul>
-     *   <li>HTTP 200 → returns {@code true}</li>
-     *   <li>HTTP 404 ({@link FeignException.NotFound}) → returns {@code false}</li>
-     *   <li>Any other {@link FeignException} → rethrown to the caller</li>
-     * </ul>
-     *
-     * @param subjectId the subject identifier to validate
-     * @return {@code true} if the subject exists; {@code false} if it returns 404
-     * @throws FeignException for any non-404 communication error with academic-service
+     * Calls {@code GET /api/v1/subjects/{subjectId}}: 200 → true, 404 → false.
      */
     @Override
     public boolean exists(String subjectId) {
         try {
             SubjectDTO subject = academicServiceClient.getSubjectById(subjectId);
             if (subject == null) {
-                log.warn("Fallback activo: no se pudo confirmar existencia de subject '{}'.", subjectId);
-                return false;
+                log.warn("Fallback activo: academic-service no disponible al consultar subject '{}'.", subjectId);
+                throw new ExternalServiceUnavailableException(
+                        "El servicio académico no está disponible. Inténtelo más tarde.");
             }
             return true;
         } catch (FeignException.NotFound e) {
@@ -57,5 +50,15 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
             log.error("Error contacting academic-service to validate subject '{}': {}", subjectId, e.getMessage());
             throw e;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Delegates to {@link #exists(String)} until academic-service exposes an enrollment endpoint.
+     * When available, this should call {@code GET /api/v1/students/{studentId}/subjects/{subjectId}/active}.
+     */
+    @Override
+    public boolean isInActiveSemester(String subjectId, String studentId) {
+        return exists(subjectId);
     }
 }

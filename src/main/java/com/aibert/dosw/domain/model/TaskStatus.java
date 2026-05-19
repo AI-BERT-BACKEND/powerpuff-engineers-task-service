@@ -9,6 +9,8 @@ public enum TaskStatus {
     TODO,
     /** The task is currently being worked on. */
     IN_PROGRESS,
+    /** The task has been paused. */
+    PAUSED,
     /** The task has been finished. {@code completedAt} is recorded automatically. */
     COMPLETED
 }

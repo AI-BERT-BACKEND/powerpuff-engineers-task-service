@@ -34,7 +34,9 @@ public class GetTasksForViewUseCaseImpl implements GetTasksForViewUseCase {
     public Map<TaskStatus, List<Task>> getKanbanView(String studentId) {
         List<Task> allTasks = taskRepositoryPort.findByStudentId(studentId);
 
+        // AIB-20 RN-03: only TODO, IN_PROGRESS and COMPLETED appear in the Kanban board
         return allTasks.stream()
+                .filter(t -> t.getStatus() != null && t.getStatus() != TaskStatus.PAUSED)
                 .collect(Collectors.groupingBy(Task::getStatus));
     }
 

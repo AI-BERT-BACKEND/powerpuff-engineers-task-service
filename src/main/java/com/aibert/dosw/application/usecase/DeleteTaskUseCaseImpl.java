@@ -6,6 +6,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.ports.in.DeleteTaskUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -40,6 +42,9 @@ public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
             throw new TaskForbiddenException(taskId);
         }
 
+        // AIB-18.3: permanent deletion (no recovery)
         taskRepositoryPort.deleteById(taskId);
+        log.info("AUDIT | operation=DELETE | studentId={} | taskId={} | deletedAt={}",
+                studentId, taskId, java.time.LocalDateTime.now());
     }
 }

@@ -1,10 +1,13 @@
 package com.aibert.dosw.entrypoints.advice;
 
+import com.aibert.dosw.domain.exceptions.ExternalServiceUnavailableException;
 import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
+import com.aibert.dosw.domain.exceptions.SubjectNotInActiveSemesterException;
 import com.aibert.dosw.domain.exceptions.TaskConflictException;
 import com.aibert.dosw.domain.exceptions.TaskEditNotAllowedException;
 import com.aibert.dosw.domain.exceptions.TaskForbiddenException;
 import com.aibert.dosw.domain.exceptions.TaskNotFoundException;
+import feign.FeignException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -50,6 +53,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleSubjectNotFoundException(
             SubjectNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    /**
+     * Handles cases where the subject exists but does not belong to the student's active semester (AIB-18.1 FA-03).
+     *
+     * @param ex the exception thrown by the use case layer
+     * @return HTTP 422 with a {@code message} body
+     */
+    @ExceptionHandler(SubjectNotInActiveSemesterException.class)
+    public ResponseEntity<Map<String, String>> handleSubjectNotInActiveSemesterException(
+            SubjectNotInActiveSemesterException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(Map.of("message", ex.getMessage()));
     }
 
@@ -103,5 +119,43 @@ public class GlobalExceptionHandler {
             TaskEditNotAllowedException ex) {
         return ResponseEntity.badRequest()
                 .body(Map.of("message", ex.getMessage()));
+    }
+
+    /**
+     * Handles cases where an external service (e.g., academic-service) is unavailable
+     * due to circuit breaker activation or fallback triggering.
+     *
+     * @param ex the exception thrown when a fallback or unavailability is detected
+     * @return HTTP 503 with a {@code message} body
+     */
+    @ExceptionHandler(ExternalServiceUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleExternalServiceUnavailableException(
+            ExternalServiceUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    /**
+     * Handles communication errors with external services (e.g., academic-service unavailable).
+     *
+     * @param ex the Feign client exception
+     * @return HTTP 503 with a {@code message} body
+     */
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<Map<String, String>> handleFeignException(FeignException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("message", "El servicio externo no está disponible. Inténtelo más tarde."));
+    }
+
+    /**
+     * Catch-all handler for any unexpected exception not covered by a specific handler.
+     *
+     * @param ex the unexpected exception
+     * @return HTTP 500 with a generic {@code message} body
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Ha ocurrido un error inesperado. Inténtelo más tarde."));
     }
 }

@@ -1,6 +1,7 @@
 package com.aibert.dosw.application.usecase;
 
 import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
+import com.aibert.dosw.domain.exceptions.SubjectNotInActiveSemesterException;
 import com.aibert.dosw.domain.exceptions.TaskConflictException;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
@@ -9,17 +10,21 @@ import com.aibert.dosw.domain.ports.in.CreateTaskUseCase;
 import com.aibert.dosw.domain.ports.out.SubjectValidationPort;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
  * Spring service implementing the {@link CreateTaskUseCase} input port.
- * Validates business rules (subject existence and duplicate check) before persisting the task.
+ * Validates business rules (subject existence, active semester, duplicate check) before persisting the task.
+ * After creation, recalculates urgency-based priority for all active tasks of the student (AIB-18.1).
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -27,27 +32,16 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
     private static final int DEADLINE_URGENCY_HOURS = 24;
 
-    /**
-     * {@inheritDoc}
-     * <p>Execution order:</p>
-     * <ol>
-     *   <li>Verifies the subject exists via {@code SubjectValidationPort}.</li>
-     *   <li>Checks for duplicate tasks (same student, subject, title).</li>
-     *   <li>Sets {@code priority} to {@code MEDIUM} if none was provided.</li>
-     *   <li>Escalates {@code priority} to {@code HIGH} if the deadline is within 24 h (RN1, RN2).</li>
-     *   <li>Sets {@code status} to {@code TODO} if none was provided.</li>
-     *   <li>Delegates persistence to {@code TaskRepositoryPort}.</li>
-     * </ol>
-     *
-     * @param task the task to create
-     * @return the persisted task
-     * @throws SubjectNotFoundException if the referenced subject does not exist
-     * @throws TaskConflictException    if a duplicate task already exists for the student
-     */
     @Override
     public Task createTask(Task task) {
+        // AIB-18.1: subject must exist
         if (!subjectValidationPort.exists(task.getSubjectId())) {
             throw new SubjectNotFoundException("La materia " + task.getSubjectId() + " no existe.");
+        }
+
+        // AIB-18.1 FA-03: subject must belong to the student's active semester (HTTP 422)
+        if (!subjectValidationPort.isInActiveSemester(task.getSubjectId(), task.getStudentId())) {
+            throw new SubjectNotInActiveSemesterException(task.getSubjectId());
         }
 
         if (taskRepositoryPort.existsDuplicate(task.getStudentId(), task.getSubjectId(), task.getTitle())) {
@@ -58,20 +52,57 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
             task.setPriority(TaskPriority.MEDIUM);
         }
 
-        // RN1 + RN2: escalate to HIGH when deadline is within the next 24 hours at creation time
-        if (task.getDeadline() != null) {
-            long hoursUntilDeadline = ChronoUnit.HOURS.between(LocalDateTime.now(), task.getDeadline());
-            boolean isUrgent = hoursUntilDeadline >= 0 && hoursUntilDeadline <= DEADLINE_URGENCY_HOURS;
-            boolean canEscalate = task.getPriority() != TaskPriority.HIGH
-                    && task.getPriority() != TaskPriority.CRITICAL;
-            if (isUrgent && canEscalate) {
-                task.setPriority(TaskPriority.HIGH);
-            }
-        }
+        // Escalate to HIGH when deadline is within the next 24 hours at creation time
+        escalateIfUrgent(task);
 
         if (task.getStatus() == null) {
             task.setStatus(TaskStatus.TODO);
         }
-        return taskRepositoryPort.save(task);
+
+        Task saved = taskRepositoryPort.save(task);
+        log.info("AUDIT | operation=CREATE | studentId={} | taskId={} | title={} | createdAt={}",
+                saved.getStudentId(), saved.getId(), saved.getTitle(), LocalDateTime.now());
+
+        // AIB-18.1 note: recalculate priorities for all other active tasks of the student
+        recalculatePriorityForActiveTasks(saved.getStudentId(), saved.getId());
+
+        return saved;
+    }
+
+    private void escalateIfUrgent(Task task) {
+        if (task.getDeadline() == null) return;
+        long hoursUntilDeadline = ChronoUnit.HOURS.between(LocalDateTime.now(), task.getDeadline());
+        boolean isUrgent = hoursUntilDeadline >= 0 && hoursUntilDeadline <= DEADLINE_URGENCY_HOURS;
+        boolean canEscalate = task.getPriority() != TaskPriority.HIGH
+                && task.getPriority() != TaskPriority.CRITICAL;
+        if (isUrgent && canEscalate) {
+            task.setPriority(TaskPriority.HIGH);
+        }
+    }
+
+    private void recalculatePriorityForActiveTasks(String studentId, String excludeTaskId) {
+        List<Task> activeTasks = taskRepositoryPort.findByStudentId(studentId).stream()
+                .filter(t -> t.getStatus() != TaskStatus.COMPLETED)
+                .filter(t -> !t.getId().equals(excludeTaskId))
+                .toList();
+
+        LocalDateTime now = LocalDateTime.now();
+        boolean anyUpdated = false;
+
+        for (Task t : activeTasks) {
+            if (t.getDeadline() == null) continue;
+            long hoursUntilDeadline = ChronoUnit.HOURS.between(now, t.getDeadline());
+            boolean isUrgent = hoursUntilDeadline >= 0 && hoursUntilDeadline <= DEADLINE_URGENCY_HOURS;
+            boolean canEscalate = t.getPriority() != TaskPriority.HIGH
+                    && t.getPriority() != TaskPriority.CRITICAL;
+            if (isUrgent && canEscalate) {
+                t.setPriority(TaskPriority.HIGH);
+                anyUpdated = true;
+            }
+        }
+
+        if (anyUpdated) {
+            taskRepositoryPort.saveAll(activeTasks);
+        }
     }
 }

@@ -17,12 +17,19 @@ public class SubjectValidationAdapter implements SubjectValidationPort {
      * {@inheritDoc}
      * Returns {@code true} for any non-null, non-blank subject ID
      * without contacting an external service.
-     *
-     * @param subjectId the subject identifier to validate
-     * @return {@code true} if {@code subjectId} is non-null and non-blank
      */
     @Override
     public boolean exists(String subjectId) {
+        return subjectId != null && !subjectId.isBlank();
+    }
+
+    /**
+     * {@inheritDoc}
+     * Stub: accepts any non-blank subject/student combination.
+     * Real validation requires an enrollment endpoint on academic-service.
+     */
+    @Override
+    public boolean isInActiveSemester(String subjectId, String studentId) {
         return subjectId != null && !subjectId.isBlank();
     }
 }

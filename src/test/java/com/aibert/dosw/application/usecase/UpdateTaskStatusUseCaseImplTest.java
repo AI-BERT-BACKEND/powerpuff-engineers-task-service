@@ -5,6 +5,7 @@ import com.aibert.dosw.domain.exceptions.TaskNotFoundException;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
+import com.aibert.dosw.domain.ports.out.TaskEventPort;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,9 @@ class UpdateTaskStatusUseCaseImplTest {
 
     @Mock
     private TaskRepositoryPort taskRepositoryPort;
+
+    @Mock
+    private TaskEventPort taskEventPort;
 
     @InjectMocks
     private UpdateTaskStatusUseCaseImpl updateTaskStatusUseCase;
@@ -140,5 +144,39 @@ class UpdateTaskStatusUseCaseImplTest {
         updateTaskStatusUseCase.updateStatus("t8", "S3", TaskStatus.IN_PROGRESS);
 
         verify(taskRepositoryPort, never()).saveAll(anyList());
+    }
+
+    @Test
+    void updateStatus_WhenPausingFromInProgress_ShouldAllowTransition() {
+        Task existing = Task.builder().id("t10").studentId("S1").status(TaskStatus.IN_PROGRESS).build();
+        when(taskRepositoryPort.findById("t10")).thenReturn(Optional.of(existing));
+        when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Task result = updateTaskStatusUseCase.updateStatus("t10", "S1", TaskStatus.PAUSED);
+
+        assertEquals(TaskStatus.PAUSED, result.getStatus());
+        verify(taskRepositoryPort).save(any(Task.class));
+    }
+
+    @Test
+    void updateStatus_WhenPausingFromTodo_ShouldThrowIllegalStateException() {
+        Task existing = Task.builder().id("t11").studentId("S1").status(TaskStatus.TODO).build();
+        when(taskRepositoryPort.findById("t11")).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalStateException.class,
+                () -> updateTaskStatusUseCase.updateStatus("t11", "S1", TaskStatus.PAUSED));
+        verify(taskRepositoryPort, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_WhenResumingFromPaused_ShouldAllowTransitionToInProgress() {
+        Task existing = Task.builder().id("t12").studentId("S1").status(TaskStatus.PAUSED).build();
+        when(taskRepositoryPort.findById("t12")).thenReturn(Optional.of(existing));
+        when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Task result = updateTaskStatusUseCase.updateStatus("t12", "S1", TaskStatus.IN_PROGRESS);
+
+        assertEquals(TaskStatus.IN_PROGRESS, result.getStatus());
+        verify(taskRepositoryPort).save(any(Task.class));
     }
 }

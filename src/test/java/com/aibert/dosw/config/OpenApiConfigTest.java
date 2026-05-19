@@ -19,7 +19,7 @@ class OpenApiConfigTest {
     void customOpenAPI_ShouldHaveCorrectTitle() {
         OpenAPI openAPI = config.customOpenAPI();
         assertNotNull(openAPI.getInfo());
-        assertEquals("Task Service API", openAPI.getInfo().getTitle());
+        assertEquals("AIbert \u2014 Task Service API", openAPI.getInfo().getTitle());
     }
 
     @Test
@@ -31,6 +31,6 @@ class OpenApiConfigTest {
     @Test
     void customOpenAPI_ShouldHaveDescription() {
         OpenAPI openAPI = config.customOpenAPI();
-        assertEquals("Task management API for students", openAPI.getInfo().getDescription());
+        assertTrue(openAPI.getInfo().getDescription().contains("REST API for managing academic tasks within the AIbert student productivity platform."));
     }
 }

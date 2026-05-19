@@ -277,4 +277,74 @@ class InMemoryTaskRepositoryTest {
     void deleteById_WhenIdNotFound_ShouldNotThrow() {
         assertDoesNotThrow(() -> repository.deleteById("non-existent-id"));
     }
+
+    // ─── R16 soft-delete & restore ───────────────────────────────────────────────
+
+    @Test
+    void softDelete_ShouldHideTaskFromFindById() {
+        Task saved = repository.save(task("S1", "MATH", "SoftDelete Me"));
+        String id = saved.getId();
+
+        assertTrue(repository.findById(id).isPresent());
+
+        repository.softDelete(id);
+
+        assertTrue(repository.findById(id).isEmpty(),
+                "Soft-deleted task must not be returned by findById");
+    }
+
+    @Test
+    void softDelete_ShouldHideTaskFromFindByStudentId() {
+        Task saved = repository.save(task("S2", "PHYS", "Hidden Task"));
+        repository.softDelete(saved.getId());
+
+        List<Task> result = repository.findByStudentId("S2");
+
+        assertTrue(result.isEmpty(), "Soft-deleted tasks must not appear in findByStudentId");
+    }
+
+    @Test
+    void softDelete_ShouldHideTaskFromFindByStudentIdWithFilters() {
+        Task saved = repository.save(task("S3", "CHEM", "Filtered Out"));
+        repository.softDelete(saved.getId());
+
+        List<Task> result = repository.findByStudentIdWithFilters("S3", null, null, null, null, null);
+
+        assertTrue(result.isEmpty(), "Soft-deleted tasks must not appear in filtered queries");
+    }
+
+    @Test
+    void softDelete_WhenIdNotFound_ShouldNotThrow() {
+        assertDoesNotThrow(() -> repository.softDelete("non-existent-id"));
+    }
+
+    @Test
+    void restore_ShouldMakeTaskVisibleAgain() {
+        Task saved = repository.save(task("S4", "MATH", "Restore Me"));
+        String id = saved.getId();
+
+        repository.softDelete(id);
+        assertTrue(repository.findById(id).isEmpty(), "Task should be hidden after soft-delete");
+
+        Optional<Task> restored = repository.restore(id);
+
+        assertTrue(restored.isPresent(), "restore() should return the task");
+        assertTrue(repository.findById(id).isPresent(), "Restored task must be visible via findById");
+    }
+
+    @Test
+    void restore_WhenTaskIsNotDeleted_ShouldReturnEmpty() {
+        Task saved = repository.save(task("S5", "MATH", "Not Deleted"));
+
+        Optional<Task> result = repository.restore(saved.getId());
+
+        assertTrue(result.isEmpty(), "restore() must return empty for a task that is not deleted");
+    }
+
+    @Test
+    void restore_WhenIdNotFound_ShouldReturnEmpty() {
+        Optional<Task> result = repository.restore("non-existent-id");
+
+        assertTrue(result.isEmpty());
+    }
 }
