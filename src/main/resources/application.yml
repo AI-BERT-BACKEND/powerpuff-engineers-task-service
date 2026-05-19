@@ -15,7 +15,7 @@
 # Base configuration (applies to all profiles)
 # -----------------------------------------------------------
 server:
-  port: 8085
+  port: 1503
 
 spring:
   application:
