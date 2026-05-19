@@ -2,6 +2,7 @@ package com.aibert.dosw.entrypoints.advice;
 
 import com.aibert.dosw.domain.exceptions.ExternalServiceUnavailableException;
 import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
+import com.aibert.dosw.domain.exceptions.SubjectNotInActiveSemesterException;
 import com.aibert.dosw.domain.exceptions.TaskConflictException;
 import com.aibert.dosw.domain.exceptions.TaskEditNotAllowedException;
 import com.aibert.dosw.domain.exceptions.TaskForbiddenException;
@@ -52,6 +53,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleSubjectNotFoundException(
             SubjectNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    /**
+     * Handles cases where the subject exists but does not belong to the student's active semester (AIB-18.1 FA-03).
+     *
+     * @param ex the exception thrown by the use case layer
+     * @return HTTP 422 with a {@code message} body
+     */
+    @ExceptionHandler(SubjectNotInActiveSemesterException.class)
+    public ResponseEntity<Map<String, String>> handleSubjectNotInActiveSemesterException(
+            SubjectNotInActiveSemesterException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(Map.of("message", ex.getMessage()));
     }
 

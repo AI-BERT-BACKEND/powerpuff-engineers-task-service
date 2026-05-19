@@ -60,7 +60,7 @@ class TaskEntityTest {
     @Test
     void allArgsConstructor_ShouldSetAllFields() {
         TaskEntity e = new TaskEntity("e1", "S1", "MATH-101", "Title", "Desc",
-                TaskType.LECTURA, 60, deadline, TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, scheduled, null, null);
+                TaskType.LECTURA, 60, deadline, TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, scheduled, null, null, null);
 
         assertEquals("e1", e.getId());
         assertEquals(TaskPriority.MEDIUM, e.getPriority());

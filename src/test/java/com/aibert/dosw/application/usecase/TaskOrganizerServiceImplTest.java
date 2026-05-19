@@ -71,11 +71,13 @@ class TaskOrganizerServiceImplTest {
 
         List<Task> result = taskOrganizerService.getOrganizedTasks("student1", null);
 
-        assertEquals(TaskPriority.HIGH, task2.getPriority());
+        // AIB-19 RN-02: task2 deadline within 24 h → escalates to CRITICAL
+        assertEquals(TaskPriority.CRITICAL, task2.getPriority());
         verify(taskRepositoryPort, times(1)).saveAll(anyList());
 
-        assertEquals("3", result.get(0).getId());
-        assertEquals("2", result.get(1).getId());
+        // task2 (CRITICAL, 12 h) and task3 (CRITICAL, 30 h) tie on priority → sorted by deadline asc
+        assertEquals("2", result.get(0).getId());
+        assertEquals("3", result.get(1).getId());
         assertEquals("1", result.get(2).getId());
     }
 
@@ -136,7 +138,8 @@ class TaskOrganizerServiceImplTest {
     }
 
     @Test
-    void getOrganizedTasks_WhenUrgentButAlreadyHighPriority_ShouldNotEscalate() {
+    void getOrganizedTasks_WhenUrgentAndHighPriority_ShouldEscalateToCritical() {
+        // AIB-19 RN-02: any non-CRITICAL task within 24 h must escalate to CRITICAL
         Task highTask = Task.builder()
                 .id("1").title("High priority urgent")
                 .priority(TaskPriority.HIGH)
@@ -148,8 +151,8 @@ class TaskOrganizerServiceImplTest {
 
         taskOrganizerService.getOrganizedTasks("student1", SortCriteriaEnum.PRIORITY);
 
-        verify(taskRepositoryPort, never()).saveAll(anyList());
-        assertEquals(TaskPriority.HIGH, highTask.getPriority());
+        verify(taskRepositoryPort).saveAll(anyList());
+        assertEquals(TaskPriority.CRITICAL, highTask.getPriority());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.aibert.dosw.application.usecase;
 
 import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
+import com.aibert.dosw.domain.exceptions.SubjectNotInActiveSemesterException;
 import com.aibert.dosw.domain.exceptions.TaskConflictException;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
@@ -14,9 +15,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +33,13 @@ class CreateTaskUseCaseImplTest {
 
     @InjectMocks
     private CreateTaskUseCaseImpl createTaskUseCase;
+
+    // shared stubs for the subject/semester happy-path
+    private void stubSubjectValid(String subjectId, String studentId) {
+        when(subjectValidationPort.exists(subjectId)).thenReturn(true);
+        when(subjectValidationPort.isInActiveSemester(subjectId, studentId)).thenReturn(true);
+        when(taskRepositoryPort.findByStudentId(studentId)).thenReturn(List.of());
+    }
 
     @Test
     void createTask_ShouldAssignTodoStatusAndSave() {
@@ -53,7 +63,7 @@ class CreateTaskUseCaseImplTest {
                 .status(TaskStatus.TODO)
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        stubSubjectValid("MATH-101", "S123");
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Test Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenReturn(savedTask);
 
@@ -75,7 +85,7 @@ class CreateTaskUseCaseImplTest {
                 .status(TaskStatus.IN_PROGRESS)
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        stubSubjectValid("MATH-101", "S123");
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Test Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenReturn(newTask);
 
@@ -95,7 +105,7 @@ class CreateTaskUseCaseImplTest {
                 .deadline(LocalDateTime.now().plusDays(2))
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        stubSubjectValid("MATH-101", "S123");
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "No Priority Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -119,6 +129,21 @@ class CreateTaskUseCaseImplTest {
     }
 
     @Test
+    void createTask_WhenSubjectNotInActiveSemester_ShouldThrowSubjectNotInActiveSemesterException() {
+        Task task = Task.builder()
+                .title("Task")
+                .studentId("S123")
+                .subjectId("MATH-101")
+                .build();
+
+        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        when(subjectValidationPort.isInActiveSemester("MATH-101", "S123")).thenReturn(false);
+
+        assertThrows(SubjectNotInActiveSemesterException.class, () -> createTaskUseCase.createTask(task));
+        verify(taskRepositoryPort, never()).save(any());
+    }
+
+    @Test
     void createTask_WhenDuplicateExists_ShouldThrowTaskConflictException() {
         Task task = Task.builder()
                 .title("Dup Task")
@@ -127,6 +152,7 @@ class CreateTaskUseCaseImplTest {
                 .build();
 
         when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        when(subjectValidationPort.isInActiveSemester("MATH-101", "S123")).thenReturn(true);
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Dup Task")).thenReturn(true);
 
         assertThrows(TaskConflictException.class, () -> createTaskUseCase.createTask(task));
@@ -144,7 +170,7 @@ class CreateTaskUseCaseImplTest {
                 .deadline(LocalDateTime.now().plusHours(10))
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        stubSubjectValid("MATH-101", "S123");
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Urgent Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -163,7 +189,7 @@ class CreateTaskUseCaseImplTest {
                 .deadline(LocalDateTime.now().plusHours(6))
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        stubSubjectValid("MATH-101", "S123");
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Urgent Low Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -182,7 +208,7 @@ class CreateTaskUseCaseImplTest {
                 .deadline(LocalDateTime.now().plusHours(3))
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        stubSubjectValid("MATH-101", "S123");
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Critical Urgent Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -200,7 +226,7 @@ class CreateTaskUseCaseImplTest {
                 .deadline(LocalDateTime.now().plusDays(3))
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        stubSubjectValid("MATH-101", "S123");
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Non-urgent Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -217,12 +243,46 @@ class CreateTaskUseCaseImplTest {
                 .subjectId("MATH-101")
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        stubSubjectValid("MATH-101", "S123");
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "No Deadline Task")).thenReturn(false);
         when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Task result = createTaskUseCase.createTask(newTask);
 
         assertEquals(TaskPriority.MEDIUM, result.getPriority());
+    }
+
+    @Test
+    void createTask_ShouldRecalculateOtherActiveTasks() {
+        Task urgentExisting = Task.builder()
+                .id("existing-1")
+                .studentId("S123")
+                .subjectId("MATH-101")
+                .title("Existing urgent")
+                .priority(TaskPriority.LOW)
+                .status(TaskStatus.TODO)
+                .deadline(LocalDateTime.now().plusHours(5))
+                .build();
+
+        Task newTask = Task.builder()
+                .title("New Task")
+                .studentId("S123")
+                .subjectId("MATH-101")
+                .deadline(LocalDateTime.now().plusDays(3))
+                .build();
+
+        Task savedNew = Task.builder().id("new-uuid").studentId("S123").title("New Task").build();
+
+        stubSubjectValid("MATH-101", "S123");
+        when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "New Task")).thenReturn(false);
+        when(taskRepositoryPort.save(any(Task.class))).thenReturn(savedNew);
+        // findByStudentId is called after save for recalculation
+        when(taskRepositoryPort.findByStudentId("S123")).thenReturn(List.of(urgentExisting));
+
+        createTaskUseCase.createTask(newTask);
+
+        // existing task with 5h deadline should have been escalated to HIGH
+        assertEquals(TaskPriority.HIGH, urgentExisting.getPriority());
+        verify(taskRepositoryPort).saveAll(anyList());
     }
 }

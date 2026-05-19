@@ -16,11 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,43 +46,39 @@ class DeleteTaskUseCaseImplTest {
     // ─── Happy path ─────────────────────────────────────────────────────────────
 
     @Test
-    void deleteTask_WhenOwnerAndTaskExists_ShouldSoftDeleteSuccessfully() {
+    void deleteTask_WhenOwnerAndTaskExists_ShouldDeletePermanently() {
         Task task = buildTask("t1", "student-1");
         when(taskRepositoryPort.findById("t1")).thenReturn(Optional.of(task));
 
         deleteTaskUseCase.deleteTask("t1", "student-1");
 
-        verify(taskRepositoryPort).softDelete("t1");
-        verify(taskRepositoryPort, never()).deleteById(any());
+        verify(taskRepositoryPort).deleteById("t1");
+        verify(taskRepositoryPort, never()).softDelete(any());
     }
 
     @Test
-    void deleteTask_WhenOwnerAndTaskIsCompleted_ShouldSoftDeleteSuccessfully() {
+    void deleteTask_WhenOwnerAndTaskIsCompleted_ShouldDeletePermanently() {
         Task task = buildTask("t2", "student-1");
         task.setStatus(TaskStatus.COMPLETED);
         when(taskRepositoryPort.findById("t2")).thenReturn(Optional.of(task));
 
         deleteTaskUseCase.deleteTask("t2", "student-1");
 
-        verify(taskRepositoryPort).softDelete("t2");
+        verify(taskRepositoryPort).deleteById("t2");
     }
 
     @Test
-    void deleteTask_WhenDeleted_TaskShouldNotBeVisibleViaFindById() {
+    void deleteTask_WhenDeleted_TaskShouldNoLongerExist() {
         Task task = buildTask("t4", "student-1");
-        // Simulate soft-delete: after softDelete, findById returns empty
         when(taskRepositoryPort.findById("t4"))
                 .thenReturn(Optional.of(task))
                 .thenReturn(Optional.empty());
-        doAnswer(inv -> { task.setDeletedAt(java.time.LocalDateTime.now()); return null; })
-                .when(taskRepositoryPort).softDelete("t4");
 
         deleteTaskUseCase.deleteTask("t4", "student-1");
 
-        // Deleted task is no longer accessible
-        assertNotNull(task.getDeletedAt(), "deletedAt should be set after soft-delete");
-        assertTrue(taskRepositoryPort.findById("t4").isEmpty(),
-                "A soft-deleted task must not be returned by findById");
+        verify(taskRepositoryPort).deleteById("t4");
+        // After hard-delete the task is gone
+        assert taskRepositoryPort.findById("t4").isEmpty();
     }
 
     // ─── Task not found ──────────────────────────────────────────────────────────
@@ -97,7 +90,7 @@ class DeleteTaskUseCaseImplTest {
         assertThrows(TaskNotFoundException.class,
                 () -> deleteTaskUseCase.deleteTask("missing", "student-1"));
 
-        verify(taskRepositoryPort, never()).save(any());
+        verify(taskRepositoryPort, never()).deleteById(any());
     }
 
     // ─── RN-01: ownership ────────────────────────────────────────────────────────
@@ -110,6 +103,6 @@ class DeleteTaskUseCaseImplTest {
         assertThrows(TaskForbiddenException.class,
                 () -> deleteTaskUseCase.deleteTask("t3", "other-student"));
 
-        verify(taskRepositoryPort, never()).save(any());
+        verify(taskRepositoryPort, never()).deleteById(any());
     }
 }

@@ -1,11 +1,13 @@
 package com.aibert.dosw.entrypoints.rest.controller;
 
 import com.aibert.dosw.application.dto.request.CreateTaskRequest;
+import com.aibert.dosw.application.dto.request.UpdateDeadlineRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
 import com.aibert.dosw.application.dto.response.DailySummaryResponse;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
+import com.aibert.dosw.application.dto.response.UpdateTaskStatusResponse;
 import com.aibert.dosw.application.mapper.TaskDtoMapper;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
@@ -18,8 +20,10 @@ import com.aibert.dosw.domain.ports.in.GetTaskByIdUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
-import com.aibert.dosw.domain.ports.in.RestoreTaskUseCase;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
+import com.aibert.dosw.domain.ports.in.GetCalendarConflictsUseCase;
+import com.aibert.dosw.domain.ports.in.RescheduleTaskUseCase;
+import com.aibert.dosw.domain.ports.in.UpdateDeadlineUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskUseCase;
 import org.junit.jupiter.api.Test;
@@ -47,10 +51,12 @@ class TaskControllerTest {
     @Mock private UpdateTaskStatusUseCase updateTaskStatusUseCase;
     @Mock private UpdateTaskUseCase updateTaskUseCase;
     @Mock private DeleteTaskUseCase deleteTaskUseCase;
-    @Mock private RestoreTaskUseCase restoreTaskUseCase;
     @Mock private GetTasksForViewUseCase getTasksForViewUseCase;
     @Mock private GetTaskByIdUseCase getTaskByIdUseCase;
     @Mock private GetDailySummaryUseCase getDailySummaryUseCase;
+    @Mock private RescheduleTaskUseCase rescheduleTaskUseCase;
+    @Mock private GetCalendarConflictsUseCase getCalendarConflictsUseCase;
+    @Mock private UpdateDeadlineUseCase updateDeadlineUseCase;
     @Mock private TaskDtoMapper taskDtoMapper;
 
     @InjectMocks
@@ -83,43 +89,58 @@ class TaskControllerTest {
         verify(taskDtoMapper).toResponse(createdTask);
     }
 
+    // AIB-18.4 — PATCH /{id}/status returns UpdateTaskStatusResponse with message
     @Test
-    void updateTaskStatus_ShouldReturn200WithUpdatedTask() {
+    void updateTaskStatus_ShouldReturn200WithStatusResponse() {
         UpdateTaskStatusRequest request = new UpdateTaskStatusRequest(TaskStatus.IN_PROGRESS);
-        Task updatedTask = Task.builder().id("t1").status(TaskStatus.IN_PROGRESS).build();
-        TaskResponse expectedResponse = TaskResponse.builder().id("t1").status(TaskStatus.IN_PROGRESS).build();
+        LocalDateTime changedAt = LocalDateTime.now();
+        Task updatedTask = Task.builder()
+                .id("t1")
+                .studentId("S1")
+                .status(TaskStatus.IN_PROGRESS)
+                .statusChangedAt(changedAt)
+                .build();
 
         when(updateTaskStatusUseCase.updateStatus("t1", "S1", TaskStatus.IN_PROGRESS)).thenReturn(updatedTask);
-        when(taskDtoMapper.toResponse(updatedTask)).thenReturn(expectedResponse);
 
-        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("t1", "S1", request);
+        ResponseEntity<UpdateTaskStatusResponse> response = taskController.updateTaskStatus("t1", "S1", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(expectedResponse, response.getBody());
+        assertNotNull(response.getBody());
+        assertEquals("t1", response.getBody().getTaskId());
+        assertEquals("S1", response.getBody().getStudentId());
+        assertEquals(TaskStatus.IN_PROGRESS, response.getBody().getStatus());
+        assertEquals(changedAt, response.getBody().getChangedAt());
+        assertEquals("Tarea actualizada exitosamente", response.getBody().getMessage());
         verify(updateTaskStatusUseCase).updateStatus("t1", "S1", TaskStatus.IN_PROGRESS);
     }
 
     @Test
-    void updateTaskStatus_WhenCompleted_ShouldReturnTaskWithCompletedAt() {
+    void updateTaskStatus_WhenCompleted_ShouldIncludeCompletedAt() {
         UpdateTaskStatusRequest request = new UpdateTaskStatusRequest(TaskStatus.COMPLETED);
         LocalDateTime now = LocalDateTime.now();
-        Task updatedTask = Task.builder().id("t2").status(TaskStatus.COMPLETED).completedAt(now).build();
-        TaskResponse expectedResponse = TaskResponse.builder().id("t2").status(TaskStatus.COMPLETED).completedAt(now).build();
+        Task updatedTask = Task.builder()
+                .id("t2")
+                .studentId("S1")
+                .status(TaskStatus.COMPLETED)
+                .completedAt(now)
+                .statusChangedAt(now)
+                .build();
 
         when(updateTaskStatusUseCase.updateStatus("t2", "S1", TaskStatus.COMPLETED)).thenReturn(updatedTask);
-        when(taskDtoMapper.toResponse(updatedTask)).thenReturn(expectedResponse);
 
-        ResponseEntity<TaskResponse> response = taskController.updateTaskStatus("t2", "S1", request);
+        ResponseEntity<UpdateTaskStatusResponse> response = taskController.updateTaskStatus("t2", "S1", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody().getCompletedAt());
+        assertNotNull(response.getBody().getChangedAt());
     }
 
     @Test
     void getTasks_WithKanbanView_ShouldReturnKanbanGroupedResponse() {
         Task t1 = Task.builder().id("1").status(TaskStatus.TODO).build();
         TaskResponse tr1 = TaskResponse.builder().id("1").status(TaskStatus.TODO).build();
-        
+
         Map<TaskStatus, List<Task>> kanbanMap = Map.of(TaskStatus.TODO, List.of(t1));
 
         when(getTasksForViewUseCase.getKanbanView("S1")).thenReturn(kanbanMap);
@@ -133,6 +154,31 @@ class TaskControllerTest {
         assertEquals(1, body.getTodo().size());
         assertEquals(0, body.getInProgress().size());
         verify(getTasksForViewUseCase).getKanbanView("S1");
+    }
+
+    // AIB-20 FA-02 — kanban view with status filter returns only the matching column
+    @Test
+    void getTasks_WithKanbanViewAndStatusFilter_ShouldReturnOnlyMatchingColumn() {
+        Task t1 = Task.builder().id("1").status(TaskStatus.TODO).build();
+        TaskResponse tr1 = TaskResponse.builder().id("1").status(TaskStatus.TODO).build();
+        Task t2 = Task.builder().id("2").status(TaskStatus.COMPLETED).build();
+
+        Map<TaskStatus, List<Task>> kanbanMap = Map.of(
+                TaskStatus.TODO, List.of(t1),
+                TaskStatus.COMPLETED, List.of(t2));
+
+        when(getTasksForViewUseCase.getKanbanView("S1")).thenReturn(kanbanMap);
+        when(taskDtoMapper.toResponse(t1)).thenReturn(tr1);
+
+        ResponseEntity<?> response = taskController.getTasks("S1", null, "kanban", TaskStatus.TODO, null, null, null, null, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertInstanceOf(KanbanResponse.class, response.getBody());
+        KanbanResponse body = (KanbanResponse) response.getBody();
+        assertEquals(1, body.getTodo().size());
+        assertEquals(0, body.getInProgress().size());
+        assertEquals(0, body.getCompleted().size());
+        verify(taskDtoMapper, never()).toResponse(t2);
     }
 
     @Test
@@ -234,7 +280,6 @@ class TaskControllerTest {
         verify(organizeTasksUseCase, never()).organizeTasksForStudent(any());
     }
 
-    // R41 — GET /{id}
     @Test
     void getTaskById_WhenExists_ShouldReturn200WithTaskResponse() {
         Task task = Task.builder().id("task-abc").studentId("S6").status(TaskStatus.TODO).build();
@@ -271,7 +316,6 @@ class TaskControllerTest {
         verify(getTasksForViewUseCase).getCalendarView("S7", null, start, end, "sub-1", null);
     }
 
-    // R39 — PATCH /{id}
     @Test
     void updateTask_ShouldReturn200WithUpdatedTask() {
         UpdateTaskRequest request = UpdateTaskRequest.builder().title("Updated title").build();
@@ -289,30 +333,36 @@ class TaskControllerTest {
         verify(updateTaskUseCase).updateTask("u1", "S8", request);
     }
 
-    // R16 — DELETE /{id} (soft-delete, 204 No Content)
+    // AIB-18.3 — DELETE /{id}: permanent deletion, HTTP 200 with message
     @Test
-    void deleteTask_WhenOwner_ShouldReturn204() {
+    void deleteTask_WhenOwner_ShouldReturn200WithMessage() {
         doNothing().when(deleteTaskUseCase).deleteTask("d1", "S9");
 
-        ResponseEntity<Void> response = taskController.deleteTask("d1", "S9");
+        ResponseEntity<Map<String, String>> response = taskController.deleteTask("d1", "S9");
 
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Tarea eliminada exitosamente", response.getBody().get("message"));
         verify(deleteTaskUseCase).deleteTask("d1", "S9");
     }
 
-    // R16 — PATCH /{id}/restore (optional restore, 200)
+    // AIB-21 RN-02 — PATCH /{id}/deadline updates the deadline and returns the updated task
     @Test
-    void restoreTask_WhenOwnerAndTaskWasDeleted_ShouldReturn200() {
-        Task task = Task.builder().id("r1").studentId("S10").status(TaskStatus.TODO).build();
-        TaskResponse taskResponse = TaskResponse.builder().id("r1").status(TaskStatus.TODO).build();
-        when(restoreTaskUseCase.restoreTask("r1", "S10")).thenReturn(task);
-        when(taskDtoMapper.toResponse(task)).thenReturn(taskResponse);
+    void updateDeadline_ShouldReturn200WithUpdatedTask() {
+        LocalDateTime newDeadline = LocalDateTime.now().plusDays(3);
+        UpdateDeadlineRequest request = UpdateDeadlineRequest.builder().newDeadline(newDeadline).build();
+        Task updated = Task.builder().id("d1").studentId("S10").deadline(newDeadline).build();
+        TaskResponse tr = TaskResponse.builder().id("d1").deadline(newDeadline).build();
 
-        ResponseEntity<TaskResponse> result = taskController.restoreTask("r1", "S10");
+        when(updateDeadlineUseCase.updateDeadline("d1", "S10", newDeadline)).thenReturn(updated);
+        when(taskDtoMapper.toResponse(updated)).thenReturn(tr);
 
-        assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertNotNull(result.getBody());
-        verify(restoreTaskUseCase).restoreTask("r1", "S10");
+        ResponseEntity<TaskResponse> response = taskController.updateDeadline("d1", "S10", request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(newDeadline, response.getBody().getDeadline());
+        verify(updateDeadlineUseCase).updateDeadline("d1", "S10", newDeadline);
     }
 
     @Test

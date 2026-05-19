@@ -9,6 +9,7 @@ import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
 import com.aibert.dosw.domain.ports.out.TaskEventPort;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -59,6 +61,7 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
         validateTransition(task.getStatus(), newStatus, taskId);
 
         task.setStatus(newStatus);
+        task.setStatusChangedAt(LocalDateTime.now());
 
         // RN-03: record or clear completedAt based on the target status
         if (TaskStatus.COMPLETED.equals(newStatus)) {
@@ -68,6 +71,8 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
         }
 
         Task saved = taskRepositoryPort.save(task);
+        log.info("AUDIT | operation=STATUS_CHANGE | studentId={} | taskId={} | newStatus={} | changedAt={}",
+                studentId, taskId, newStatus, saved.getStatusChangedAt());
 
         // Notify gamification-service when a task is completed
         if (TaskStatus.COMPLETED.equals(newStatus)) {

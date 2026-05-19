@@ -96,6 +96,22 @@ class GetTasksForViewUseCaseImplTest {
     }
 
     @Test
+    void getKanbanView_WhenTaskIsPaused_ShouldExcludeItFromKanban() {
+        // AIB-20 RN-03: Kanban board shows only TODO, IN_PROGRESS and COMPLETED
+        Task pausedTask = Task.builder().id("5").studentId("S1").title("Paused task")
+                .status(TaskStatus.PAUSED).priority(TaskPriority.MEDIUM)
+                .deadline(LocalDateTime.now().plusDays(3)).build();
+        Task todoTask = task("1", TaskStatus.TODO);
+
+        when(taskRepositoryPort.findByStudentId("S1")).thenReturn(List.of(pausedTask, todoTask));
+
+        Map<TaskStatus, List<Task>> kanban = getTasksForViewUseCase.getKanbanView("S1");
+
+        assertNull(kanban.get(TaskStatus.PAUSED));
+        assertEquals(1, kanban.get(TaskStatus.TODO).size());
+    }
+
+    @Test
     void getKanbanView_WhenTaskHasNullStatus_ShouldExcludeItAndNotThrowNPE() {
         Task nullStatusTask = Task.builder().id("99").studentId("S1").title("Broken task").status(null).build();
         Task validTask = task("1", TaskStatus.TODO);

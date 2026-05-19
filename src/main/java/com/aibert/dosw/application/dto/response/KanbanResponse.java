@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Response DTO for the Kanban board view.
- * Groups tasks into three columns based on their current status:
- * {@code todo}, {@code inProgress}, and {@code completed}.
+ * Response DTO for the Kanban board view (AIB-20).
+ * Groups tasks into exactly three columns per spec: todo, inProgress, completed.
+ * PAUSED tasks are excluded from the Kanban board (RN-03).
  */
 @Data
 @Builder
@@ -19,6 +19,5 @@ import java.util.List;
 public class KanbanResponse {
     private List<TaskResponse> todo;
     private List<TaskResponse> inProgress;
-    private List<TaskResponse> paused;
     private List<TaskResponse> completed;
 }

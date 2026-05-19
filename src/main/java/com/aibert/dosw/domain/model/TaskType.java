@@ -12,6 +12,8 @@ public enum TaskType {
     EXAMEN,
     /** A project that typically spans multiple sessions. */
     PROYECTO,
+    /** A short quiz or pop-test. */
+    QUIZ,
     /** A reading activity or literature review. */
     LECTURA,
     /** Any other type of academic task not covered by the above. */

@@ -7,6 +7,9 @@ import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -59,8 +62,12 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
         return sorted;
     }
 
+    @Caching(
+        cacheable = @Cacheable(value = "prioritizedTasks", key = "#studentId", condition = "!#forzarRecalculo"),
+        put     = @CachePut( value = "prioritizedTasks", key = "#studentId", condition = "#forzarRecalculo")
+    )
     @Override
-    public List<Task> getPrioritizedActiveTasks(String studentId) {
+    public List<Task> getPrioritizedActiveTasks(String studentId, boolean forzarRecalculo) {
         List<Task> allTasks = taskRepositoryPort.findByStudentId(studentId);
 
         List<Task> activeTasks = allTasks.stream()
@@ -72,6 +79,11 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
         return activeTasks.stream()
                 .sorted(buildComparator(SortCriteriaEnum.PRIORITY))
                 .toList();
+    }
+
+    @Override
+    public List<Task> getPrioritizedActiveTasks(String studentId) {
+        return getPrioritizedActiveTasks(studentId, false);
     }
 
     /**
@@ -90,11 +102,10 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
 
             long hoursUntilDeadline = ChronoUnit.HOURS.between(now, task.getDeadline());
             boolean isUrgent = hoursUntilDeadline >= 0 && hoursUntilDeadline <= DEADLINE_URGENCY_HOURS;
-            boolean canEscalate = task.getPriority() != TaskPriority.CRITICAL
-                    && task.getPriority() != TaskPriority.HIGH;
+            boolean canEscalate = task.getPriority() != TaskPriority.CRITICAL;
 
             if (isUrgent && canEscalate) {
-                task.setPriority(TaskPriority.HIGH);
+                task.setPriority(TaskPriority.CRITICAL);
                 anyUpdated = true;
             }
         }

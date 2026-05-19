@@ -20,5 +20,11 @@ public interface TaskOrganizerUseCase {
      */
     List<Task> getOrganizedTasks(String studentId, SortCriteriaEnum sortCriteria);
     List<Task> getOrganizedTasks(String studentId, SortCriteriaEnum sortCriteria, Integer limit);
+
+    /**
+     * Returns active tasks sorted by priority. Result is cached per student;
+     * pass {@code forzarRecalculo=true} to bypass the cache and recompute.
+     */
+    List<Task> getPrioritizedActiveTasks(String studentId, boolean forzarRecalculo);
     List<Task> getPrioritizedActiveTasks(String studentId);
 }

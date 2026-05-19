@@ -2,12 +2,14 @@ package com.aibert.dosw.entrypoints.rest.controller;
 
 import com.aibert.dosw.application.dto.request.CreateTaskRequest;
 import com.aibert.dosw.application.dto.request.RescheduleTaskRequest;
+import com.aibert.dosw.application.dto.request.UpdateDeadlineRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskRequest;
 import com.aibert.dosw.application.dto.request.UpdateTaskStatusRequest;
 import com.aibert.dosw.application.dto.response.ConflictResponse;
 import com.aibert.dosw.application.dto.response.DailySummaryResponse;
 import com.aibert.dosw.application.dto.response.KanbanResponse;
 import com.aibert.dosw.application.dto.response.TaskResponse;
+import com.aibert.dosw.application.dto.response.UpdateTaskStatusResponse;
 import com.aibert.dosw.application.mapper.TaskDtoMapper;
 import com.aibert.dosw.domain.model.SortCriteriaEnum;
 import com.aibert.dosw.domain.model.Task;
@@ -22,11 +24,12 @@ import com.aibert.dosw.domain.ports.in.GetTasksForViewUseCase;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
 import com.aibert.dosw.domain.ports.in.RescheduleTaskUseCase;
-import com.aibert.dosw.domain.ports.in.RestoreTaskUseCase;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
+import com.aibert.dosw.domain.ports.in.UpdateDeadlineUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskStatusUseCase;
 import com.aibert.dosw.domain.ports.in.UpdateTaskUseCase;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -58,7 +61,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
-@Tag(name = "Tasks", description = "Task management endpoints")
+@Tag(name = "Tasks", description = "Endpoints for creating, retrieving, updating and deleting academic tasks. Includes Kanban, calendar, and prioritized-list views.")
 public class TaskController {
 
     private final CreateTaskUseCase createTaskUseCase;
@@ -68,10 +71,10 @@ public class TaskController {
     private final UpdateTaskStatusUseCase updateTaskStatusUseCase;
     private final UpdateTaskUseCase updateTaskUseCase;
     private final DeleteTaskUseCase deleteTaskUseCase;
-    private final RestoreTaskUseCase restoreTaskUseCase;
     private final GetTasksForViewUseCase getTasksForViewUseCase;
     private final GetTaskByIdUseCase getTaskByIdUseCase;
     private final RescheduleTaskUseCase rescheduleTaskUseCase;
+    private final UpdateDeadlineUseCase updateDeadlineUseCase;
     private final GetCalendarConflictsUseCase getCalendarConflictsUseCase;
     private final GetDailySummaryUseCase getDailySummaryUseCase;
     private final TaskDtoMapper taskDtoMapper;
@@ -84,13 +87,20 @@ public class TaskController {
      * @return HTTP 201 with the created {@link TaskResponse}
      */
     @PostMapping
-    @Operation(summary = "Create a new task",
-            description = "Creates a new task with the provided details and assigns an initial status.")
+    @Operation(
+        summary = "Create a task",
+        description = "Creates a new academic task for the authenticated student. " +
+                "The task is assigned an initial status of TODO. " +
+                "Priority is set automatically if not provided: tasks with a deadline within the next 24 hours are escalated to HIGH; " +
+                "all others default to MEDIUM. " +
+                "After creation, urgency-based priority is recalculated for all other active tasks of the same student. " +
+                "Returns the full task object including the generated identifier and assigned status.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Task created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input data"),
-            @ApiResponse(responseCode = "404", description = "Subject not found"),
-            @ApiResponse(responseCode = "409", description = "A task with the same title already exists for this subject")
+            @ApiResponse(responseCode = "201", description = "Task created — returns the full task including its generated ID and assigned status"),
+            @ApiResponse(responseCode = "400", description = "Request body failed validation — check field constraints (title max 200 chars, duration max 6000 min, deadline must be in the future)"),
+            @ApiResponse(responseCode = "404", description = "The referenced subject does not exist"),
+            @ApiResponse(responseCode = "409", description = "A task with the same title already exists for this subject and student"),
+            @ApiResponse(responseCode = "422", description = "The referenced subject is not part of the student's active semester")
     })
     public ResponseEntity<TaskResponse> createTask(
             @RequestHeader("X-User-Id") String userId,
@@ -120,31 +130,55 @@ public class TaskController {
      * @return HTTP 200 with a {@link KanbanResponse}, a {@code List<TaskResponse>}, or a sorted list
      */
     @GetMapping
-    @Operation(summary = "Retrieve tasks for the authenticated student",
-            description = "Returns the student's tasks. Without parameters: sorted list (supports 'limit=N'). With 'view=kanban': tasks grouped by status (TODO, IN_PROGRESS, PAUSED, COMPLETED). With 'view=calendar': tasks filtered by date range, status, subject, or task type.")
-    @ApiResponse(responseCode = "200", description = "Task list retrieved successfully")
+    @Operation(
+        summary = "List tasks",
+        description = "Returns tasks for the authenticated student. Behaviour depends on the optional `view` parameter:\n\n" +
+                "**Default (no view):** Returns all tasks sorted by the `sortBy` criterion (defaults to PRIORITY). " +
+                "Use `limit` to cap the number of results.\n\n" +
+                "**view=kanban:** Returns tasks grouped into three columns — `todo`, `inProgress`, and `completed`. " +
+                "Add `status` to show only one column.\n\n" +
+                "**view=calendar:** Returns a flat list filtered by `status`, date range (`startDate`/`endDate`), `subjectId`, and `taskType`.")
+    @ApiResponse(responseCode = "200", description = "Task list retrieved — returns a sorted list, a Kanban object, or a filtered list depending on the view parameter")
     public ResponseEntity<?> getTasks(
             @RequestHeader("X-User-Id") String studentId,
+            @Parameter(description = "Sort criterion for the default view. Accepted values: PRIORITY (default), DEADLINE, SUBJECT.")
             @RequestParam(required = false) SortCriteriaEnum sortBy,
+            @Parameter(description = "View mode. Accepted values: kanban, calendar. Omit for the default sorted list.")
             @RequestParam(required = false) String view,
+            @Parameter(description = "Filter by task status. " +
+                    "In the kanban view, accepted values are TODO, IN_PROGRESS, COMPLETED (shows only that column). " +
+                    "In the calendar view, all status values are accepted: TODO, IN_PROGRESS, PAUSED, COMPLETED.")
             @RequestParam(required = false) TaskStatus status,
+            @Parameter(description = "Lower bound for the task deadline (ISO 8601, e.g. 2025-06-01T00:00:00). Calendar view only.")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @Parameter(description = "Upper bound for the task deadline (ISO 8601). Calendar view only.")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @Parameter(description = "Filter by subject identifier. Calendar view only.")
             @RequestParam(required = false) String subjectId,
+            @Parameter(description = "Filter by task type. Calendar view only. Accepted values: TAREA, EXAMEN, PROYECTO, QUIZ, LECTURA, OTRO.")
             @RequestParam(required = false) TaskType taskType,
+            @Parameter(description = "Maximum number of results to return. Default view only.")
             @RequestParam(required = false) Integer limit) {
 
         if ("kanban".equalsIgnoreCase(view)) {
             Map<TaskStatus, List<Task>> grouped = getTasksForViewUseCase.getKanbanView(studentId);
+            // FA-02: optional status filter — empty the non-matching columns when a filter is active
+            boolean showTodo      = status == null || status == TaskStatus.TODO;
+            boolean showInProgress = status == null || status == TaskStatus.IN_PROGRESS;
+            boolean showCompleted  = status == null || status == TaskStatus.COMPLETED;
             KanbanResponse kanban = KanbanResponse.builder()
-                    .todo(grouped.getOrDefault(TaskStatus.TODO, List.of()).stream()
-                            .map(taskDtoMapper::toResponse).toList())
-                    .inProgress(grouped.getOrDefault(TaskStatus.IN_PROGRESS, List.of()).stream()
-                            .map(taskDtoMapper::toResponse).toList())
-                    .paused(grouped.getOrDefault(TaskStatus.PAUSED, List.of()).stream()
-                            .map(taskDtoMapper::toResponse).toList())
-                    .completed(grouped.getOrDefault(TaskStatus.COMPLETED, List.of()).stream()
-                            .map(taskDtoMapper::toResponse).toList())
+                    .todo(showTodo
+                            ? grouped.getOrDefault(TaskStatus.TODO, List.of()).stream()
+                                    .map(taskDtoMapper::toResponse).toList()
+                            : List.of())
+                    .inProgress(showInProgress
+                            ? grouped.getOrDefault(TaskStatus.IN_PROGRESS, List.of()).stream()
+                                    .map(taskDtoMapper::toResponse).toList()
+                            : List.of())
+                    .completed(showCompleted
+                            ? grouped.getOrDefault(TaskStatus.COMPLETED, List.of()).stream()
+                                    .map(taskDtoMapper::toResponse).toList()
+                            : List.of())
                     .build();
             return ResponseEntity.ok(kanban);
         }
@@ -168,11 +202,13 @@ public class TaskController {
      * @return HTTP 200 with the {@link TaskResponse}
      */
     @GetMapping("/{id}")
-    @Operation(summary = "Get task details by ID",
-            description = "Returns the full details of a single task by its ID.")
+    @Operation(
+        summary = "Get task by ID",
+        description = "Returns the full details of a single task identified by its UUID. " +
+                "Includes all fields: title, subject, type, priority, status, deadline, scheduled date, and timestamps.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Task found"),
-            @ApiResponse(responseCode = "404", description = "Task not found")
+            @ApiResponse(responseCode = "200", description = "Task found — returns the complete task object"),
+            @ApiResponse(responseCode = "404", description = "No task exists with the given ID")
     })
     public ResponseEntity<TaskResponse> getTaskById(@PathVariable String id) {
         Task task = getTaskByIdUseCase.getTaskById(id);
@@ -187,23 +223,35 @@ public class TaskController {
      * @param id      the task identifier from the URL path
      * @param userId  the student identifier forwarded by the API Gateway via the {@code X-User-Id} header
      * @param request the validated status update payload
-     * @return HTTP 200 with the updated {@link TaskResponse}
+     * @return HTTP 200 with {@link UpdateTaskStatusResponse} containing taskId, status, completedAt, changedAt, studentId and a confirmation message
      */
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Update the status of a task",
-            description = "Updates the status of a task. Only the task owner can perform this action. When set to COMPLETED, the completion date is recorded and priorities are recalculated.")
+    @Operation(
+        summary = "Update task status",
+        description = "Changes the status of a task. Only the task owner may perform this action. " +
+                "Valid transitions: TODO → IN_PROGRESS → PAUSED → COMPLETED (and back where applicable). " +
+                "When the task is set to COMPLETED, the completion timestamp is recorded automatically. " +
+                "The response includes the new status, the timestamp of the change, and a confirmation message.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Status updated successfully"),
-            @ApiResponse(responseCode = "403", description = "Requesting student does not own this task"),
-            @ApiResponse(responseCode = "404", description = "Task not found"),
-            @ApiResponse(responseCode = "400", description = "Invalid status")
+            @ApiResponse(responseCode = "200", description = "Status updated — returns task ID, student ID, new status, completion timestamp (if applicable), change timestamp, and a confirmation message"),
+            @ApiResponse(responseCode = "400", description = "The provided status value is not valid"),
+            @ApiResponse(responseCode = "403", description = "The requesting student does not own this task"),
+            @ApiResponse(responseCode = "404", description = "No task exists with the given ID")
     })
-    public ResponseEntity<TaskResponse> updateTaskStatus(
+    public ResponseEntity<UpdateTaskStatusResponse> updateTaskStatus(
             @PathVariable String id,
             @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody UpdateTaskStatusRequest request) {
         Task updatedTask = updateTaskStatusUseCase.updateStatus(id, userId, request.getStatus());
-        return ResponseEntity.ok(taskDtoMapper.toResponse(updatedTask));
+        UpdateTaskStatusResponse response = UpdateTaskStatusResponse.builder()
+                .taskId(updatedTask.getId())
+                .studentId(updatedTask.getStudentId())
+                .status(updatedTask.getStatus())
+                .completedAt(updatedTask.getCompletedAt())
+                .changedAt(updatedTask.getStatusChangedAt())
+                .message("Tarea actualizada exitosamente")
+                .build();
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -217,14 +265,19 @@ public class TaskController {
      * @return HTTP 200 with the updated {@link TaskResponse}
      */
     @PutMapping("/{id}")
-    @Operation(summary = "Update a task (full or partial) — R15",
-            description = "Updates editable fields of a task: title, description, deadline, subjectId, priority, taskType, estimatedDurationMinutes, scheduledDate. Only the owner may edit, and completed tasks cannot be modified. Returns 409 if scheduledDate overlaps with another task.")
+    @Operation(
+        summary = "Replace task fields",
+        description = "Updates all supplied fields of an existing task. Only the task owner may edit it. " +
+                "Completed tasks cannot be modified. " +
+                "Editable fields: title, description, subject, task type, priority, deadline, estimated duration, and scheduled date. " +
+                "If the deadline is changed and no explicit priority is supplied, urgency-based priority escalation is applied automatically. " +
+                "If the new scheduled date overlaps with another task's time block, a conflict error is returned along with a suggested alternative date.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Task updated successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input or task is completed"),
-            @ApiResponse(responseCode = "403", description = "Requesting student does not own this task"),
-            @ApiResponse(responseCode = "404", description = "Task not found"),
-            @ApiResponse(responseCode = "409", description = "scheduledDate overlaps with another task — response includes suggested date")
+            @ApiResponse(responseCode = "200", description = "Task updated — returns the full updated task object"),
+            @ApiResponse(responseCode = "400", description = "Request body failed validation, or the task is already completed and cannot be edited"),
+            @ApiResponse(responseCode = "403", description = "The requesting student does not own this task"),
+            @ApiResponse(responseCode = "404", description = "No task exists with the given ID"),
+            @ApiResponse(responseCode = "409", description = "The requested scheduled date overlaps with another task — the response body includes a suggested conflict-free date")
     })
     public ResponseEntity<TaskResponse> putTask(
             @PathVariable String id,
@@ -244,13 +297,16 @@ public class TaskController {
      * @return HTTP 200 with the updated {@link TaskResponse}
      */
     @PatchMapping("/{id}")
-    @Operation(summary = "Partially update a task",
-            description = "Partially updates the fields of an existing task (title, description, deadline, priority, type, etc.). Only the owner may edit, and completed tasks cannot be modified.")
+    @Operation(
+        summary = "Partially update a task",
+        description = "Applies only the non-null fields supplied in the request body; all other fields remain unchanged. " +
+                "Only the task owner may edit it, and completed tasks cannot be modified. " +
+                "Same priority recalculation and scheduled-date overlap rules as the full update apply.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Task updated successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input or task is completed"),
-            @ApiResponse(responseCode = "403", description = "Requesting student does not own this task"),
-            @ApiResponse(responseCode = "404", description = "Task not found")
+            @ApiResponse(responseCode = "200", description = "Task updated — returns the full updated task object"),
+            @ApiResponse(responseCode = "400", description = "Request body failed validation, or the task is already completed and cannot be edited"),
+            @ApiResponse(responseCode = "403", description = "The requesting student does not own this task"),
+            @ApiResponse(responseCode = "404", description = "No task exists with the given ID")
     })
     public ResponseEntity<TaskResponse> updateTask(
             @PathVariable String id,
@@ -261,50 +317,28 @@ public class TaskController {
     }
 
     /**
-     * Soft-deletes a task (R16).
-     * Sets {@code deletedAt} to the current timestamp. The task will no longer
-     * appear in any listing. Only the owner may delete it.
+     * Permanently deletes a task (AIB-18.3).
+     * The deletion is irreversible. Only the owner may delete it.
      *
      * @param id     the task identifier from the URL path
      * @param userId the student identifier forwarded by the API Gateway via the {@code X-User-Id} header
-     * @return HTTP 204 No Content on success
+     * @return HTTP 200 with a confirmation message
      */
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a task (soft-delete) — R16",
-            description = "Marks the task as deleted by setting its deletedAt timestamp. The task is no longer visible in any listing. Only the task owner can delete it.")
+    @Operation(
+        summary = "Delete a task",
+        description = "Permanently removes the task. This action is irreversible — the task cannot be recovered after deletion. " +
+                "Only the task owner may delete it. Returns a confirmation message on success.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "Task deleted successfully"),
-            @ApiResponse(responseCode = "403", description = "Requesting student does not own this task"),
-            @ApiResponse(responseCode = "404", description = "Task not found")
+            @ApiResponse(responseCode = "200", description = "Task deleted — returns a JSON object with a confirmation message"),
+            @ApiResponse(responseCode = "403", description = "The requesting student does not own this task"),
+            @ApiResponse(responseCode = "404", description = "No task exists with the given ID")
     })
-    public ResponseEntity<Void> deleteTask(
+    public ResponseEntity<Map<String, String>> deleteTask(
             @PathVariable String id,
             @RequestHeader("X-User-Id") String userId) {
         deleteTaskUseCase.deleteTask(id, userId);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Restores a previously soft-deleted task (R16 — optional "Undo").
-     * Only the task owner may restore it.
-     *
-     * @param id     the task identifier from the URL path
-     * @param userId the student identifier forwarded by the API Gateway via the {@code X-User-Id} header
-     * @return HTTP 200 with the restored {@link TaskResponse}
-     */
-    @PatchMapping("/{id}/restore")
-    @Operation(summary = "Restore a soft-deleted task — R16",
-            description = "Clears the deletedAt timestamp, making the task visible again. Only the original task owner can restore it.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Task restored successfully"),
-            @ApiResponse(responseCode = "403", description = "Requesting student does not own this task"),
-            @ApiResponse(responseCode = "404", description = "No deleted task found with the given ID")
-    })
-    public ResponseEntity<TaskResponse> restoreTask(
-            @PathVariable String id,
-            @RequestHeader("X-User-Id") String userId) {
-        Task restored = restoreTaskUseCase.restoreTask(id, userId);
-        return ResponseEntity.ok(taskDtoMapper.toResponse(restored));
+        return ResponseEntity.ok(Map.of("message", "Tarea eliminada exitosamente"));
     }
 
     /**
@@ -314,11 +348,14 @@ public class TaskController {
      * @return HTTP 200 with the list of {@link TaskResponse} objects
      */
     @GetMapping("/student/{studentId}")
-    @Operation(summary = "Get tasks by student",
-            description = "Returns all tasks for a given student. The requesting user must match the student ID.")
+    @Operation(
+        summary = "Get all tasks for a student",
+        description = "Returns every task belonging to the given student. " +
+                "The value in the `X-User-Id` header must match the `studentId` path variable; " +
+                "students may only retrieve their own tasks.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Task list retrieved successfully"),
-            @ApiResponse(responseCode = "403", description = "Requesting user does not match the student ID")
+            @ApiResponse(responseCode = "200", description = "Tasks retrieved — returns the complete list of the student's tasks"),
+            @ApiResponse(responseCode = "403", description = "The requesting user's ID does not match the student ID in the path")
     })
     public ResponseEntity<?> getTasksByStudentId(
             @RequestHeader("X-User-Id") String userId,
@@ -339,9 +376,12 @@ public class TaskController {
      * @return HTTP 200 with a {@link DailySummaryResponse}
      */
     @GetMapping("/daily-summary")
-    @Operation(summary = "Resumen diario de tareas",
-            description = "Retorna el porcentaje de completado, total de horas programadas, tareas completadas y pendientes para el día de hoy.")
-    @ApiResponse(responseCode = "200", description = "Resumen diario obtenido exitosamente")
+    @Operation(
+        summary = "Get daily progress summary",
+        description = "Returns a summary of the student's task progress for the current day. " +
+                "Includes the overall completion percentage, total hours scheduled, " +
+                "and counts of completed and pending tasks.")
+    @ApiResponse(responseCode = "200", description = "Daily summary retrieved — returns completion percentage, total scheduled hours, completed count, and pending count")
     public ResponseEntity<DailySummaryResponse> getDailySummary(
             @RequestHeader("X-User-Id") String studentId) {
         return ResponseEntity.ok(getDailySummaryUseCase.getDailySummary(studentId));
@@ -354,12 +394,18 @@ public class TaskController {
      * @return HTTP 200 with a list of prioritized active {@link TaskResponse} objects
      */
     @GetMapping("/prioritized")
-    @Operation(summary = "Tareas activas priorizadas (AIB-19)",
-            description = "Retorna solo las tareas en estado TODO o IN_PROGRESS del estudiante, ordenadas de mayor a menor prioridad.")
-    @ApiResponse(responseCode = "200", description = "Tareas priorizadas obtenidas exitosamente")
+    @Operation(
+        summary = "Get prioritized active tasks",
+        description = "Returns only the student's active tasks (TODO and IN_PROGRESS), sorted by priority from highest to lowest. " +
+                "Tasks with a deadline within the next 24 hours are automatically escalated to CRITICAL before the list is returned. " +
+                "Results are cached per student to avoid unnecessary recalculations. " +
+                "Pass `forceRecalculate=true` to bypass the cache and force a fresh computation.")
+    @ApiResponse(responseCode = "200", description = "Prioritized task list retrieved — returns active tasks sorted from CRITICAL down to LOW")
     public ResponseEntity<List<TaskResponse>> getPrioritizedActiveTasks(
-            @RequestHeader("X-User-Id") String studentId) {
-        List<Task> tasks = taskOrganizerUseCase.getPrioritizedActiveTasks(studentId);
+            @RequestHeader("X-User-Id") String studentId,
+            @Parameter(description = "When true, invalidates the cache and recalculates priorities before returning the list.")
+            @RequestParam(name = "forceRecalculate", required = false, defaultValue = "false") boolean forzarRecalculo) {
+        List<Task> tasks = taskOrganizerUseCase.getPrioritizedActiveTasks(studentId, forzarRecalculo);
         List<TaskResponse> response = tasks.stream().map(taskDtoMapper::toResponse).toList();
         return ResponseEntity.ok(response);
     }
@@ -372,11 +418,15 @@ public class TaskController {
      * @return HTTP 200 with all of the student's tasks (scheduled and non-pending)
      */
     @PostMapping("/student/{studentId}/organize")
-    @Operation(summary = "Organize tasks (Calendar)",
-            description = "Organizes and assigns dates to the student's pending tasks. The requesting user must match the student ID.")
+    @Operation(
+        summary = "Auto-schedule pending tasks",
+        description = "Automatically assigns a scheduled date to each of the student's pending (TODO) tasks, " +
+                "optimising them for the planner view. " +
+                "Returns all tasks belonging to the student, including those that were already scheduled or completed. " +
+                "The requesting user must match the student ID in the path.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Tasks organized successfully"),
-            @ApiResponse(responseCode = "403", description = "Requesting user does not match the student ID")
+            @ApiResponse(responseCode = "200", description = "Tasks auto-scheduled — returns the full updated task list for the student"),
+            @ApiResponse(responseCode = "403", description = "The requesting user's ID does not match the student ID in the path")
     })
     public ResponseEntity<?> organizeTasks(
             @RequestHeader("X-User-Id") String userId,
@@ -401,14 +451,20 @@ public class TaskController {
      * @return HTTP 200 with the rescheduled {@link TaskResponse}
      */
     @PatchMapping("/{id}/schedule")
-    @Operation(summary = "Reschedule a task (drag-and-drop) — R17",
-            description = "Updates only the scheduledDate of a task. Designed for drag-and-drop calendar interactions. Returns 409 if the new date exceeds the deadline or overlaps another task's time block.")
+    @Operation(
+        summary = "Reschedule a task work session",
+        description = "Updates the date and time when the student plans to work on the task (scheduled date). " +
+                "Designed for planner drag-and-drop interactions. " +
+                "The scheduled date must not exceed the task's deadline. " +
+                "If the new time block overlaps with another scheduled task, a conflict error is returned " +
+                "along with a suggested conflict-free date. " +
+                "All other task fields remain unchanged.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Task rescheduled successfully"),
-            @ApiResponse(responseCode = "400", description = "scheduledDate is missing"),
-            @ApiResponse(responseCode = "403", description = "Requesting student does not own this task"),
-            @ApiResponse(responseCode = "404", description = "Task not found"),
-            @ApiResponse(responseCode = "409", description = "scheduledDate exceeds deadline or overlaps another task")
+            @ApiResponse(responseCode = "200", description = "Work session rescheduled — returns the updated task with the new scheduled date"),
+            @ApiResponse(responseCode = "400", description = "The new scheduled date was not provided"),
+            @ApiResponse(responseCode = "403", description = "The requesting student does not own this task"),
+            @ApiResponse(responseCode = "404", description = "No task exists with the given ID"),
+            @ApiResponse(responseCode = "409", description = "The requested date exceeds the task deadline, or it overlaps another scheduled task — the response body includes a suggested alternative date")
     })
     public ResponseEntity<TaskResponse> rescheduleTask(
             @PathVariable String id,
@@ -416,6 +472,37 @@ public class TaskController {
             @Valid @RequestBody RescheduleTaskRequest request) {
         Task rescheduled = rescheduleTaskUseCase.rescheduleTask(id, userId, request.getScheduledDate());
         return ResponseEntity.ok(taskDtoMapper.toResponse(rescheduled));
+    }
+
+    /**
+     * Updates the deadline of a task via calendar drag-and-drop (AIB-21 RN-02 / FA-03).
+     * Persists the new due date and triggers urgency-based priority recalculation.
+     *
+     * @param id      the task identifier from the URL path
+     * @param userId  the student identifier forwarded by the API Gateway
+     * @param request payload containing the new {@code newDeadline}
+     * @return HTTP 200 with the updated {@link TaskResponse}
+     */
+    @PatchMapping("/{id}/deadline")
+    @Operation(
+        summary = "Move task deadline",
+        description = "Updates the due date of a task. Intended for calendar drag-and-drop interactions where the student " +
+                "moves a task card to a different day. " +
+                "After the deadline is updated, urgency-based priority escalation is applied automatically: " +
+                "tasks whose new deadline falls within the next 24 hours are escalated to HIGH if not already HIGH or CRITICAL. " +
+                "Completed tasks cannot have their deadline changed.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Deadline updated — returns the full updated task object with the new deadline and recalculated priority"),
+            @ApiResponse(responseCode = "400", description = "The new deadline was not provided, or the task is already completed"),
+            @ApiResponse(responseCode = "403", description = "The requesting student does not own this task"),
+            @ApiResponse(responseCode = "404", description = "No task exists with the given ID")
+    })
+    public ResponseEntity<TaskResponse> updateDeadline(
+            @PathVariable String id,
+            @RequestHeader("X-User-Id") String userId,
+            @Valid @RequestBody UpdateDeadlineRequest request) {
+        Task updated = updateDeadlineUseCase.updateDeadline(id, userId, request.getNewDeadline());
+        return ResponseEntity.ok(taskDtoMapper.toResponse(updated));
     }
 
     /**
@@ -428,12 +515,19 @@ public class TaskController {
      * @return HTTP 200 with a list of {@link ConflictResponse}; empty list when no conflicts exist
      */
     @GetMapping("/calendar/conflicts")
-    @Operation(summary = "Get scheduled task conflicts (R17)",
-            description = "Returns pairs of tasks whose time blocks overlap within the optional date range. Used by the frontend to highlight conflicting calendar blocks.")
-    @ApiResponse(responseCode = "200", description = "Conflict list retrieved (empty if no overlaps)")
+    @Operation(
+        summary = "Detect scheduled time conflicts",
+        description = "Returns every pair of tasks whose scheduled time blocks overlap for the authenticated student. " +
+                "An overlap occurs when task A starts before task B ends and task B starts before task A ends. " +
+                "Optionally restrict the search to a specific date range using `startDate` and `endDate`. " +
+                "Returns an empty list when no conflicts exist. " +
+                "The frontend uses this response to highlight conflicting blocks on the calendar.")
+    @ApiResponse(responseCode = "200", description = "Conflict list retrieved — each entry contains the IDs, titles, and time windows of the two overlapping tasks; empty when no conflicts exist")
     public ResponseEntity<List<ConflictResponse>> getCalendarConflicts(
             @RequestHeader("X-User-Id") String studentId,
+            @Parameter(description = "Start of the search window (ISO 8601). Only tasks scheduled on or after this date are checked.")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @Parameter(description = "End of the search window (ISO 8601). Only tasks scheduled on or before this date are checked.")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         List<ConflictResponse> conflicts = getCalendarConflictsUseCase.getConflicts(studentId, startDate, endDate);
         return ResponseEntity.ok(conflicts);

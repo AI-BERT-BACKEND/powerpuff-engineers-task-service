@@ -11,6 +11,7 @@ import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.UpdateTaskUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UpdateTaskUseCaseImpl implements UpdateTaskUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -108,7 +110,10 @@ public class UpdateTaskUseCaseImpl implements UpdateTaskUseCase {
             }
         }
 
-        return taskRepositoryPort.save(task);
+        Task saved = taskRepositoryPort.save(task);
+        log.info("AUDIT | operation=EDIT | studentId={} | taskId={} | updatedAt={}",
+                studentId, taskId, LocalDateTime.now());
+        return saved;
     }
 
     /**

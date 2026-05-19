@@ -71,6 +71,9 @@ public class TaskEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "status_changed_at")
+    private LocalDateTime statusChangedAt;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }
