@@ -13,7 +13,7 @@ public interface SubjectValidationPort {
      * @param subjectId the identifier of the subject to verify
      * @return {@code true} if the subject exists; {@code false} otherwise
      */
-    boolean exists(String subjectId);
+    boolean exists(String subjectId, String studentId);
 
     /**
      * Returns {@code true} if the subject belongs to the student's current active semester.

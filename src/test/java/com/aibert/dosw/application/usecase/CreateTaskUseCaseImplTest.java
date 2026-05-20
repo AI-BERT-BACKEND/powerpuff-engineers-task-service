@@ -1,12 +1,15 @@
 package com.aibert.dosw.application.usecase;
 
+import com.aibert.dosw.application.dto.request.TaskNotificationEvent;
 import com.aibert.dosw.domain.exceptions.SubjectNotFoundException;
 import com.aibert.dosw.domain.exceptions.SubjectNotInActiveSemesterException;
 import com.aibert.dosw.domain.exceptions.TaskConflictException;
+import com.aibert.dosw.domain.model.NotificationSeverity;
 import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.out.SubjectValidationPort;
+import com.aibert.dosw.domain.ports.out.TaskNotificationPort;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +22,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,12 +36,15 @@ class CreateTaskUseCaseImplTest {
     @Mock
     private SubjectValidationPort subjectValidationPort;
 
+    @Mock
+    private TaskNotificationPort taskNotificationPort;
+
     @InjectMocks
     private CreateTaskUseCaseImpl createTaskUseCase;
 
     // shared stubs for the subject/semester happy-path
     private void stubSubjectValid(String subjectId, String studentId) {
-        when(subjectValidationPort.exists(subjectId)).thenReturn(true);
+        when(subjectValidationPort.exists(subjectId, studentId)).thenReturn(true);
         when(subjectValidationPort.isInActiveSemester(subjectId, studentId)).thenReturn(true);
         when(taskRepositoryPort.findByStudentId(studentId)).thenReturn(List.of());
     }
@@ -122,7 +130,7 @@ class CreateTaskUseCaseImplTest {
                 .subjectId("UNKNOWN")
                 .build();
 
-        when(subjectValidationPort.exists("UNKNOWN")).thenReturn(false);
+        when(subjectValidationPort.exists("UNKNOWN", "S123")).thenReturn(false);
 
         assertThrows(SubjectNotFoundException.class, () -> createTaskUseCase.createTask(task));
         verify(taskRepositoryPort, never()).save(any());
@@ -136,7 +144,7 @@ class CreateTaskUseCaseImplTest {
                 .subjectId("MATH-101")
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        when(subjectValidationPort.exists("MATH-101", "S123")).thenReturn(true);
         when(subjectValidationPort.isInActiveSemester("MATH-101", "S123")).thenReturn(false);
 
         assertThrows(SubjectNotInActiveSemesterException.class, () -> createTaskUseCase.createTask(task));
@@ -151,7 +159,7 @@ class CreateTaskUseCaseImplTest {
                 .subjectId("MATH-101")
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        when(subjectValidationPort.exists("MATH-101", "S123")).thenReturn(true);
         when(subjectValidationPort.isInActiveSemester("MATH-101", "S123")).thenReturn(true);
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Dup Task")).thenReturn(true);
 
@@ -284,5 +292,58 @@ class CreateTaskUseCaseImplTest {
         // existing task with 5h deadline should have been escalated to HIGH
         assertEquals(TaskPriority.HIGH, urgentExisting.getPriority());
         verify(taskRepositoryPort).saveAll(anyList());
+    }
+
+    @Test
+    void createTask_WhenPriorityLow_ShouldPublishNotificationWithLowSeverity() {
+        Task newTask = Task.builder()
+                .title("Low Priority Task")
+                .studentId("S123")
+                .subjectId("MATH-101")
+                .priority(TaskPriority.LOW)
+                .deadline(LocalDateTime.now().plusDays(5))
+                .build();
+
+        stubSubjectValid("MATH-101", "S123");
+        when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Low Priority Task")).thenReturn(false);
+        when(taskRepositoryPort.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Task result = createTaskUseCase.createTask(newTask);
+
+        assertEquals(TaskPriority.LOW, result.getPriority());
+        verify(taskNotificationPort).publish(argThat(e -> e.severity() == NotificationSeverity.LOW));
+    }
+
+    @Test
+    void createTask_WhenActiveTaskHasNullDeadline_ShouldSkipEscalation() {
+        Task activeWithNullDeadline = Task.builder()
+                .id("existing-null-deadline")
+                .studentId("S123")
+                .subjectId("MATH-101")
+                .title("No deadline task")
+                .priority(TaskPriority.LOW)
+                .status(TaskStatus.TODO)
+                .deadline(null)
+                .build();
+
+        Task newTask = Task.builder()
+                .title("New Task")
+                .studentId("S123")
+                .subjectId("MATH-101")
+                .deadline(LocalDateTime.now().plusDays(3))
+                .build();
+
+        Task savedNew = Task.builder().id("new-uuid").studentId("S123").title("New Task").build();
+
+        stubSubjectValid("MATH-101", "S123");
+        when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "New Task")).thenReturn(false);
+        when(taskRepositoryPort.save(any(Task.class))).thenReturn(savedNew);
+        when(taskRepositoryPort.findByStudentId("S123")).thenReturn(List.of(activeWithNullDeadline));
+
+        createTaskUseCase.createTask(newTask);
+
+        // task with null deadline should keep its original LOW priority
+        assertEquals(TaskPriority.LOW, activeWithNullDeadline.getPriority());
+        verify(taskRepositoryPort, never()).saveAll(anyList());
     }
 }

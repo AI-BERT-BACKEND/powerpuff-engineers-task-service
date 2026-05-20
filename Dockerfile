@@ -24,14 +24,14 @@ WORKDIR /app
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
+COPY --chown=appuser:appgroup --from=builder /app/target/*.jar app.jar
+
 USER appuser
 
-COPY --from=builder /app/target/*.jar app.jar
-
-EXPOSE 8084
+EXPOSE 1503
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:8084/actuator/health || exit 1
+  CMD wget -qO- http://localhost:1503/actuator/health || exit 1
 
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \

@@ -5,19 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO representing a subject received from academic-service.
- * Used in the responses of the {@code AcademicServiceClient} Feign client.
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class SubjectDTO {
 
-    private String id;
-    private String name;
-    private String code;
-    private String teacherName;
+    private Long id;
+    private String studentId;
+    private String subjectName;
     private Integer credits;
+    private String teacherName;
+    private String semester;
 }
