@@ -1,5 +1,8 @@
 ##### GIT IGNORE FOR THE BACKEND OF THE TECHCUP PROJECT ####
 
+#### BUILD OUTPUTS ####
+build_output.txt
+
 #### JAVA ####
 *.class
 *.log

@@ -34,7 +34,7 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
 
     @Override
     public Task createTask(Task task) {
-        if (!subjectValidationPort.exists(task.getSubjectId())) {
+        if (!subjectValidationPort.exists(task.getSubjectId(), task.getStudentId())) {
             throw new SubjectNotFoundException("La materia " + task.getSubjectId() + " no existe.");
         }
 

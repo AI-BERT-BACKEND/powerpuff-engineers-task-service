@@ -1,5 +1,6 @@
 package com.aibert.dosw.infrastructure.adapters;
 
+import com.aibert.dosw.application.dto.AcademicApiResponse;
 import com.aibert.dosw.application.dto.SubjectDTO;
 import com.aibert.dosw.domain.exceptions.ExternalServiceUnavailableException;
 import com.aibert.dosw.domain.ports.out.SubjectValidationPort;
@@ -11,15 +12,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-/**
- * Real implementation of SubjectValidationPort via Feign.
- * Active only with the 'feign' profile.
- *
- * academic-service returns 200  → subject exists  → true
- * academic-service returns 404  → subject not found → false
- * Any other network/server error → propagated as exception
- *   so the caller (CreateTaskUseCaseImpl) can handle it.
- */
 @Component
 @Profile("feign")
 @Primary
@@ -29,15 +21,11 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
 
     private final AcademicServiceClient academicServiceClient;
 
-    /**
-     * {@inheritDoc}
-     * Calls {@code GET /api/v1/subjects/{subjectId}}: 200 → true, 404 → false.
-     */
     @Override
-    public boolean exists(String subjectId) {
+    public boolean exists(String subjectId, String studentId) {
         try {
-            SubjectDTO subject = academicServiceClient.getSubjectById(subjectId);
-            if (subject == null) {
+            AcademicApiResponse<SubjectDTO> response = academicServiceClient.getSubjectById(studentId, subjectId);
+            if (response == null || !response.isSuccess() || response.getData() == null) {
                 log.warn("Fallback activo: academic-service no disponible al consultar subject '{}'.", subjectId);
                 throw new ExternalServiceUnavailableException(
                         "El servicio académico no está disponible. Inténtelo más tarde.");
@@ -52,13 +40,8 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * Delegates to {@link #exists(String)} until academic-service exposes an enrollment endpoint.
-     * When available, this should call {@code GET /api/v1/students/{studentId}/subjects/{subjectId}/active}.
-     */
     @Override
     public boolean isInActiveSemester(String subjectId, String studentId) {
-        return exists(subjectId);
+        return exists(subjectId, studentId);
     }
 }

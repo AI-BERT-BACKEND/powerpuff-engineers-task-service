@@ -40,7 +40,7 @@ class CreateTaskUseCaseImplTest {
 
     // shared stubs for the subject/semester happy-path
     private void stubSubjectValid(String subjectId, String studentId) {
-        when(subjectValidationPort.exists(subjectId)).thenReturn(true);
+        when(subjectValidationPort.exists(subjectId, studentId)).thenReturn(true);
         when(subjectValidationPort.isInActiveSemester(subjectId, studentId)).thenReturn(true);
         when(taskRepositoryPort.findByStudentId(studentId)).thenReturn(List.of());
     }
@@ -126,7 +126,7 @@ class CreateTaskUseCaseImplTest {
                 .subjectId("UNKNOWN")
                 .build();
 
-        when(subjectValidationPort.exists("UNKNOWN")).thenReturn(false);
+        when(subjectValidationPort.exists("UNKNOWN", "S123")).thenReturn(false);
 
         assertThrows(SubjectNotFoundException.class, () -> createTaskUseCase.createTask(task));
         verify(taskRepositoryPort, never()).save(any());
@@ -140,7 +140,7 @@ class CreateTaskUseCaseImplTest {
                 .subjectId("MATH-101")
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        when(subjectValidationPort.exists("MATH-101", "S123")).thenReturn(true);
         when(subjectValidationPort.isInActiveSemester("MATH-101", "S123")).thenReturn(false);
 
         assertThrows(SubjectNotInActiveSemesterException.class, () -> createTaskUseCase.createTask(task));
@@ -155,7 +155,7 @@ class CreateTaskUseCaseImplTest {
                 .subjectId("MATH-101")
                 .build();
 
-        when(subjectValidationPort.exists("MATH-101")).thenReturn(true);
+        when(subjectValidationPort.exists("MATH-101", "S123")).thenReturn(true);
         when(subjectValidationPort.isInActiveSemester("MATH-101", "S123")).thenReturn(true);
         when(taskRepositoryPort.existsDuplicate("S123", "MATH-101", "Dup Task")).thenReturn(true);
 

@@ -1,6 +1,5 @@
 package com.aibert.dosw.infrastructure.external;
 
-import com.aibert.dosw.application.dto.SubjectDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +16,7 @@ class AcademicServiceFallbackTest {
 
     @Test
     void getSubjectById_ShouldReturnNull() {
-        SubjectDTO result = fallback.getSubjectById("MATH-101");
+        var result = fallback.getSubjectById("student-1", "MATH-101");
 
         assertNull(result);
     }

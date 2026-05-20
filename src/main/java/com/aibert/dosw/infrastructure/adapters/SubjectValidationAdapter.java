@@ -19,7 +19,7 @@ public class SubjectValidationAdapter implements SubjectValidationPort {
      * without contacting an external service.
      */
     @Override
-    public boolean exists(String subjectId) {
+    public boolean exists(String subjectId, String studentId) {
         return subjectId != null && !subjectId.isBlank();
     }
 

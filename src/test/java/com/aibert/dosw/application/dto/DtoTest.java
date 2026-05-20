@@ -21,13 +21,13 @@ class DtoTest {
     @Test
     void subjectDTO_Builder_ShouldSetAllFields() {
         SubjectDTO dto = SubjectDTO.builder()
-                .id("s-1").name("Matemáticas").code("MATH-101")
-                .teacherName("Prof. García").credits(4)
+                .id(1L).subjectName("Matemáticas").studentId("s-1")
+                .teacherName("Prof. García").credits(4).semester("2026-1")
                 .build();
 
-        assertEquals("s-1", dto.getId());
-        assertEquals("Matemáticas", dto.getName());
-        assertEquals("MATH-101", dto.getCode());
+        assertEquals(1L, dto.getId());
+        assertEquals("Matemáticas", dto.getSubjectName());
+        assertEquals("s-1", dto.getStudentId());
         assertEquals("Prof. García", dto.getTeacherName());
         assertEquals(4, dto.getCredits());
     }
@@ -41,16 +41,16 @@ class DtoTest {
     @Test
     void subjectDTO_Setters_ShouldWork() {
         SubjectDTO dto = new SubjectDTO();
-        dto.setId("x");
-        dto.setName("Física");
-        assertEquals("x", dto.getId());
-        assertEquals("Física", dto.getName());
+        dto.setId(2L);
+        dto.setSubjectName("Física");
+        assertEquals(2L, dto.getId());
+        assertEquals("Física", dto.getSubjectName());
     }
 
     @Test
     void subjectDTO_Equals_ShouldReturnTrueForEqual() {
-        SubjectDTO a = SubjectDTO.builder().id("1").name("A").build();
-        SubjectDTO b = SubjectDTO.builder().id("1").name("A").build();
+        SubjectDTO a = SubjectDTO.builder().id(1L).subjectName("A").build();
+        SubjectDTO b = SubjectDTO.builder().id(1L).subjectName("A").build();
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
     }
