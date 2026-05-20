@@ -114,6 +114,12 @@
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
 
+        <!-- Kafka — mensajería asíncrona con stats-service -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- Flyway — migraciones de base de datos -->
         <dependency>
             <groupId>org.flywaydb</groupId>

@@ -41,6 +41,12 @@ springdoc:
     operations-sorter: method
     enabled: true
 
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
 feign:
   client:
     config:
@@ -152,6 +158,34 @@ feign:
         logger-level: BASIC
 
 ---
+# -----------------------------------------------------------
+# Profile: kafka
+# Habilita publicación de eventos de notificación hacia stats-service.
+#
+# Required environment variables:
+#   KAFKA_BOOTSTRAP_SERVERS  — broker Kafka (e.g. kafka:9092)
+# -----------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: kafka
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+kafka:
+  topics:
+    task-notifications: task.notifications
+
+---
+# -----------------------------------------------------------
+# Profile: qa
+# Azure QA environment — PostgreSQL + Azure Event Hubs (Kafka-compatible).
+#
+# Required environment variables:
+#   DB_URL, DB_USER, DB_PASSWORD
+#   KAFKA_BOOTSTRAP_SERVERS  — aibert-eventhubs-qa.servicebus.windows.net:9093
+#   KAFKA_CONNECTION_STRING  — Azure Event Hubs connection string
+# -----------------------------------------------------------
 spring:
   config:
     activate:
@@ -160,8 +194,18 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    properties:
+      security.protocol: SASL_SSL
+      sasl.mechanism: PLAIN
+      sasl.jaas.config: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"$ConnectionString\" password=\"${KAFKA_CONNECTION_STRING}\";"
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
     open-in-view: false
+
+kafka:
+  topics:
+    task-notifications: task.notifications
