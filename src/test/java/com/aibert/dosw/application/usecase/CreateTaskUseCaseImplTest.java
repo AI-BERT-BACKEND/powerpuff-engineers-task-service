@@ -7,6 +7,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.model.TaskPriority;
 import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.out.SubjectValidationPort;
+import com.aibert.dosw.domain.ports.out.TaskNotificationPort;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +31,9 @@ class CreateTaskUseCaseImplTest {
 
     @Mock
     private SubjectValidationPort subjectValidationPort;
+
+    @Mock
+    private TaskNotificationPort taskNotificationPort;
 
     @InjectMocks
     private CreateTaskUseCaseImpl createTaskUseCase;
