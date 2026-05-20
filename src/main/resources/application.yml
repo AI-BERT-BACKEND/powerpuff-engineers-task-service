@@ -41,12 +41,6 @@ springdoc:
     operations-sorter: method
     enabled: true
 
-eureka:
-  client:
-    enabled: false
-    register-with-eureka: false
-    fetch-registry: false
-
 feign:
   client:
     config:
