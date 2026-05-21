@@ -51,14 +51,14 @@ class SubjectServiceFeignAdapterTest {
     }
 
     @Test
-    void exists_WhenFeignThrowsServerError_ShouldPropagateException() {
+    void exists_WhenFeignThrowsServerError_ShouldThrowExternalServiceUnavailableException() {
         Request dummyRequest = Request.create(
                 Request.HttpMethod.GET, "/api/v1/subjects/1",
                 Map.of(), null, StandardCharsets.UTF_8, null);
         when(academicServiceClient.getSubjectById("student-1", 1L))
                 .thenThrow(new FeignException.ServiceUnavailable("503", dummyRequest, null, Map.of()));
 
-        assertThrows(FeignException.class, () -> adapter.exists("1", "student-1"));
+        assertThrows(ExternalServiceUnavailableException.class, () -> adapter.exists("1", "student-1"));
     }
 
     @Test
