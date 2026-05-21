@@ -103,7 +103,7 @@ public class TaskController {
             @ApiResponse(responseCode = "422", description = "The referenced subject is not part of the student's active semester")
     })
     public ResponseEntity<TaskResponse> createTask(
-            @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody CreateTaskRequest request) {
         Task taskToCreate = taskDtoMapper.toModel(request, userId);
         Task createdTask = createTaskUseCase.createTask(taskToCreate);
@@ -140,7 +140,7 @@ public class TaskController {
                 "**view=calendar:** Returns a flat list filtered by `status`, date range (`startDate`/`endDate`), `subjectId`, and `taskType`.")
     @ApiResponse(responseCode = "200", description = "Task list retrieved — returns a sorted list, a Kanban object, or a filtered list depending on the view parameter")
     public ResponseEntity<?> getTasks(
-            @RequestHeader("X-User-Id") String studentId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String studentId,
             @Parameter(description = "Sort criterion for the default view. Accepted values: PRIORITY (default), DEADLINE, SUBJECT.")
             @RequestParam(required = false) SortCriteriaEnum sortBy,
             @Parameter(description = "View mode. Accepted values: kanban, calendar. Omit for the default sorted list.")
@@ -240,7 +240,7 @@ public class TaskController {
     })
     public ResponseEntity<UpdateTaskStatusResponse> updateTaskStatus(
             @PathVariable String id,
-            @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody UpdateTaskStatusRequest request) {
         Task updatedTask = updateTaskStatusUseCase.updateStatus(id, userId, request.getStatus());
         UpdateTaskStatusResponse response = UpdateTaskStatusResponse.builder()
@@ -281,7 +281,7 @@ public class TaskController {
     })
     public ResponseEntity<TaskResponse> putTask(
             @PathVariable String id,
-            @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody UpdateTaskRequest request) {
         Task updatedTask = updateTaskUseCase.updateTask(id, userId, request);
         return ResponseEntity.ok(taskDtoMapper.toResponse(updatedTask));
@@ -310,7 +310,7 @@ public class TaskController {
     })
     public ResponseEntity<TaskResponse> updateTask(
             @PathVariable String id,
-            @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody UpdateTaskRequest request) {
         Task updatedTask = updateTaskUseCase.updateTask(id, userId, request);
         return ResponseEntity.ok(taskDtoMapper.toResponse(updatedTask));
@@ -336,7 +336,7 @@ public class TaskController {
     })
     public ResponseEntity<Map<String, String>> deleteTask(
             @PathVariable String id,
-            @RequestHeader("X-User-Id") String userId) {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId) {
         deleteTaskUseCase.deleteTask(id, userId);
         return ResponseEntity.ok(Map.of("message", "Tarea eliminada exitosamente"));
     }
@@ -358,7 +358,7 @@ public class TaskController {
             @ApiResponse(responseCode = "403", description = "The requesting user's ID does not match the student ID in the path")
     })
     public ResponseEntity<?> getTasksByStudentId(
-            @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId,
             @PathVariable String studentId) {
         if (!userId.equals(studentId)) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
@@ -383,7 +383,7 @@ public class TaskController {
                 "and counts of completed and pending tasks.")
     @ApiResponse(responseCode = "200", description = "Daily summary retrieved — returns completion percentage, total scheduled hours, completed count, and pending count")
     public ResponseEntity<DailySummaryResponse> getDailySummary(
-            @RequestHeader("X-User-Id") String studentId) {
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String studentId) {
         return ResponseEntity.ok(getDailySummaryUseCase.getDailySummary(studentId));
     }
 
@@ -402,7 +402,7 @@ public class TaskController {
                 "Pass `forceRecalculate=true` to bypass the cache and force a fresh computation.")
     @ApiResponse(responseCode = "200", description = "Prioritized task list retrieved — returns active tasks sorted from CRITICAL down to LOW")
     public ResponseEntity<List<TaskResponse>> getPrioritizedActiveTasks(
-            @RequestHeader("X-User-Id") String studentId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String studentId,
             @Parameter(description = "When true, invalidates the cache and recalculates priorities before returning the list.")
             @RequestParam(name = "forceRecalculate", required = false, defaultValue = "false") boolean forzarRecalculo) {
         List<Task> tasks = taskOrganizerUseCase.getPrioritizedActiveTasks(studentId, forzarRecalculo);
@@ -429,7 +429,7 @@ public class TaskController {
             @ApiResponse(responseCode = "403", description = "The requesting user's ID does not match the student ID in the path")
     })
     public ResponseEntity<?> organizeTasks(
-            @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId,
             @PathVariable String studentId) {
         if (!userId.equals(studentId)) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
@@ -468,7 +468,7 @@ public class TaskController {
     })
     public ResponseEntity<TaskResponse> rescheduleTask(
             @PathVariable String id,
-            @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody RescheduleTaskRequest request) {
         Task rescheduled = rescheduleTaskUseCase.rescheduleTask(id, userId, request.getScheduledDate());
         return ResponseEntity.ok(taskDtoMapper.toResponse(rescheduled));
@@ -499,7 +499,7 @@ public class TaskController {
     })
     public ResponseEntity<TaskResponse> updateDeadline(
             @PathVariable String id,
-            @RequestHeader("X-User-Id") String userId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody UpdateDeadlineRequest request) {
         Task updated = updateDeadlineUseCase.updateDeadline(id, userId, request.getNewDeadline());
         return ResponseEntity.ok(taskDtoMapper.toResponse(updated));
@@ -524,7 +524,7 @@ public class TaskController {
                 "The frontend uses this response to highlight conflicting blocks on the calendar.")
     @ApiResponse(responseCode = "200", description = "Conflict list retrieved — each entry contains the IDs, titles, and time windows of the two overlapping tasks; empty when no conflicts exist")
     public ResponseEntity<List<ConflictResponse>> getCalendarConflicts(
-            @RequestHeader("X-User-Id") String studentId,
+            @Parameter(hidden = true) @RequestHeader("X-User-Id") String studentId,
             @Parameter(description = "Start of the search window (ISO 8601). Only tasks scheduled on or after this date are checked.")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @Parameter(description = "End of the search window (ISO 8601). Only tasks scheduled on or before this date are checked.")

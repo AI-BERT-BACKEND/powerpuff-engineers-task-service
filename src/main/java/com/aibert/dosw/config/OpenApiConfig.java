@@ -1,17 +1,29 @@
 package com.aibert.dosw.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
 
+    private static final String STUDENT_ID_SCHEME = "X-User-Id";
+
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
+                .addSecurityItem(new SecurityRequirement().addList(STUDENT_ID_SCHEME))
+                .components(new Components()
+                        .addSecuritySchemes(STUDENT_ID_SCHEME, new SecurityScheme()
+                                .name(STUDENT_ID_SCHEME)
+                                .type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.HEADER)
+                                .description("Student identifier injected by the API Gateway. Enter your student UUID here.")))
                 .info(new Info()
                         .title("AIbert — Task Service API")
                         .version("1.0.0")
