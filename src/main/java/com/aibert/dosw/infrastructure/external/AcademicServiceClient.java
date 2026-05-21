@@ -10,12 +10,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 @FeignClient(
         name = "academic-service",
         url = "${clients.academic-service.url}",
-        fallback = AcademicServiceFallback.class
+        fallbackFactory = AcademicServiceFallbackFactory.class
 )
 public interface AcademicServiceClient {
 
     @GetMapping("/api/v1/subjects/{subjectId}")
     AcademicApiResponse<SubjectDTO> getSubjectById(
-            @RequestHeader("X-Student-Id") String studentId,
+            @RequestHeader("studentId") String studentId,
             @PathVariable("subjectId") Long subjectId);
 }

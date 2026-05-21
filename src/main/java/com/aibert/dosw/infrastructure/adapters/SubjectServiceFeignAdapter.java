@@ -32,12 +32,12 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
                         "El servicio académico no está disponible. Inténtelo más tarde.");
             }
             return true;
-        } catch (FeignException.NotFound e) {
-            log.debug("academic-service: subject '{}' not found.", subjectId);
+        } catch (FeignException.NotFound | FeignException.Forbidden e) {
+            log.debug("academic-service: subject '{}' not found or not accessible to student '{}'.", subjectId, studentId);
             return false;
         } catch (FeignException e) {
             log.error("Error contacting academic-service to validate subject '{}': {}", subjectId, e.getMessage());
-            throw e;
+            throw new ExternalServiceUnavailableException("El servicio académico no está disponible. Inténtelo más tarde.");
         }
     }
 
