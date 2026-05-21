@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 public class AcademicServiceFallback implements AcademicServiceClient {
 
     @Override
-    public AcademicApiResponse<SubjectDTO> getSubjectById(String studentId, String subjectId) {
+    public AcademicApiResponse<SubjectDTO> getSubjectById(String studentId, Long subjectId) {
         log.warn("academic-service unavailable when fetching subject '{}'. Returning null.", subjectId);
         return null;
     }

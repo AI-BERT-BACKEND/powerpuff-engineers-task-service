@@ -17,5 +17,5 @@ public interface AcademicServiceClient {
     @GetMapping("/api/v1/subjects/{subjectId}")
     AcademicApiResponse<SubjectDTO> getSubjectById(
             @RequestHeader("X-Student-Id") String studentId,
-            @PathVariable("subjectId") String subjectId);
+            @PathVariable("subjectId") Long subjectId);
 }

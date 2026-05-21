@@ -24,7 +24,8 @@ public class SubjectServiceFeignAdapter implements SubjectValidationPort {
     @Override
     public boolean exists(String subjectId, String studentId) {
         try {
-            AcademicApiResponse<SubjectDTO> response = academicServiceClient.getSubjectById(studentId, subjectId);
+            AcademicApiResponse<SubjectDTO> response =
+                    academicServiceClient.getSubjectById(studentId, Long.parseLong(subjectId));
             if (response == null || !response.isSuccess() || response.getData() == null) {
                 log.warn("Fallback activo: academic-service no disponible al consultar subject '{}'.", subjectId);
                 throw new ExternalServiceUnavailableException(
