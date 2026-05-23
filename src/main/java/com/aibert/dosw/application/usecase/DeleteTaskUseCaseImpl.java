@@ -43,8 +43,8 @@ public class DeleteTaskUseCaseImpl implements DeleteTaskUseCase {
         }
 
         // AIB-18.3: permanent deletion (no recovery)
+        log.info("AUDIT | operation=DELETE | studentId={} | taskId={} | title={} | subjectId={} | priority={} | status={}",
+                studentId, taskId, task.getTitle(), task.getSubjectId(), task.getPriority(), task.getStatus());
         taskRepositoryPort.deleteById(taskId);
-        log.info("AUDIT | operation=DELETE | studentId={} | taskId={} | deletedAt={}",
-                studentId, taskId, java.time.LocalDateTime.now());
     }
 }

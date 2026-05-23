@@ -5,6 +5,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.ports.in.GetCalendarConflictsUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GetCalendarConflictsUseCaseImpl implements GetCalendarConflictsUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -74,6 +76,12 @@ public class GetCalendarConflictsUseCaseImpl implements GetCalendarConflictsUseC
             }
         }
 
+        if (!conflicts.isEmpty()) {
+            log.warn("CALENDAR_CONFLICTS | studentId={} | conflictsFound={} | window=[{} - {}]",
+                    studentId, conflicts.size(), startDate, endDate);
+        } else {
+            log.debug("CALENDAR_CONFLICTS | studentId={} | conflictsFound=0 | scheduledTasksChecked={}", studentId, scheduled.size());
+        }
         return conflicts;
     }
 }

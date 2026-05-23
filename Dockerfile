@@ -24,6 +24,10 @@ WORKDIR /app
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
+ADD --chown=appuser:appgroup \
+    https://github.com/microsoft/ApplicationInsights-Java/releases/download/3.5.4/applicationinsights-agent-3.5.4.jar \
+    applicationinsights-agent.jar
+
 COPY --chown=appuser:appgroup --from=builder /app/target/*.jar app.jar
 
 USER appuser
@@ -36,4 +40,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
   "-XX:MaxRAMPercentage=75.0", \
+  "-javaagent:applicationinsights-agent.jar", \
   "-jar", "app.jar"]

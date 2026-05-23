@@ -34,10 +34,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,metrics,loggers
   endpoint:
     health:
       show-details: never
+    loggers:
+      enabled: true
 
 springdoc:
   api-docs:
@@ -58,7 +60,12 @@ feign:
 
 logging:
   level:
+    root: INFO
+    com.aibert.dosw: DEBUG
     com.aibert.dosw.infrastructure.external: DEBUG
+    org.apache.kafka: WARN
+    org.springframework.kafka: INFO
+    org.springframework.security: WARN
 
 clients:
   academic-service:

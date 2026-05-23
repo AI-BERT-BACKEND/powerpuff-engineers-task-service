@@ -7,6 +7,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.ports.in.RescheduleTaskUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RescheduleTaskUseCaseImpl implements RescheduleTaskUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -55,7 +57,10 @@ public class RescheduleTaskUseCaseImpl implements RescheduleTaskUseCase {
         checkOverlap(taskId, studentId, newScheduledDate, task.getEstimatedDurationMinutes());
 
         task.setScheduledDate(newScheduledDate);
-        return taskRepositoryPort.save(task);
+        Task saved = taskRepositoryPort.save(task);
+        log.info("AUDIT | operation=RESCHEDULE | studentId={} | taskId={} | newScheduledDate={} | deadline={}",
+                studentId, taskId, newScheduledDate, task.getDeadline());
+        return saved;
     }
 
     /**

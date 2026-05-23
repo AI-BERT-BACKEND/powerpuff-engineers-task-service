@@ -5,6 +5,7 @@ import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.OrganizeTasksUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -21,6 +22,7 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrganizeTasksUseCaseImpl implements OrganizeTasksUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -55,6 +57,8 @@ public class OrganizeTasksUseCaseImpl implements OrganizeTasksUseCase {
         }
 
         taskRepositoryPort.saveAll(pendingTasks);
+        log.info("AUDIT | operation=AUTO_ORGANIZE | studentId={} | totalTasks={} | scheduledTasks={} | maxMinutesPerDay={}",
+                studentId, allTasks.size(), pendingTasks.size(), MAX_MINUTES_PER_DAY);
         return allTasks;
     }
 

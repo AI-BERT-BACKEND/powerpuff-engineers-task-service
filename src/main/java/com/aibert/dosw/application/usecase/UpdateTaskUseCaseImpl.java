@@ -66,6 +66,7 @@ public class UpdateTaskUseCaseImpl implements UpdateTaskUseCase {
 
         // Capture original values to detect changes for RN-03
         LocalDateTime originalDeadline = task.getDeadline();
+        TaskPriority originalPriority = task.getPriority();
         boolean priorityExplicitlySet = request.getPriority() != null;
 
         // Apply partial updates
@@ -110,9 +111,14 @@ public class UpdateTaskUseCaseImpl implements UpdateTaskUseCase {
             }
         }
 
+        boolean deadlineChanged = request.getDeadline() != null && !request.getDeadline().equals(originalDeadline);
+        boolean priorityChanged = task.getPriority() != originalPriority;
+
         Task saved = taskRepositoryPort.save(task);
-        log.info("AUDIT | operation=EDIT | studentId={} | taskId={} | updatedAt={}",
-                studentId, taskId, LocalDateTime.now());
+        log.info("AUDIT | operation=EDIT | studentId={} | taskId={} | deadlineChanged={} | priorityChanged={} | priorityEscalated={} | newPriority={} | newDeadline={}",
+                studentId, taskId, deadlineChanged, priorityChanged,
+                (priorityChanged && !priorityExplicitlySet),
+                saved.getPriority(), saved.getDeadline());
         return saved;
     }
 

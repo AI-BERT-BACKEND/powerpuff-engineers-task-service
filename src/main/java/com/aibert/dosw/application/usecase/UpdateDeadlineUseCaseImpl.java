@@ -42,6 +42,8 @@ public class UpdateDeadlineUseCaseImpl implements UpdateDeadlineUseCase {
             throw new TaskEditNotAllowedException(taskId);
         }
 
+        LocalDateTime previousDeadline = task.getDeadline();
+        TaskPriority previousPriority = task.getPriority();
         task.setDeadline(newDeadline);
 
         // AIB-21 RN-02: recalculate urgency-based priority after deadline change
@@ -54,8 +56,9 @@ public class UpdateDeadlineUseCaseImpl implements UpdateDeadlineUseCase {
         }
 
         Task saved = taskRepositoryPort.save(task);
-        log.info("AUDIT | operation=DEADLINE_UPDATE | studentId={} | taskId={} | newDeadline={}",
-                studentId, taskId, newDeadline);
+        log.info("AUDIT | operation=DEADLINE_UPDATE | studentId={} | taskId={} | previousDeadline={} | newDeadline={} | priorityEscalated={} | newPriority={}",
+                studentId, taskId, previousDeadline, newDeadline,
+                (saved.getPriority() != previousPriority), saved.getPriority());
         return saved;
     }
 }

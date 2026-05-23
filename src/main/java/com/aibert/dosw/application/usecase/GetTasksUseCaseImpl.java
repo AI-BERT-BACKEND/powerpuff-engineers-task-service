@@ -5,6 +5,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.ports.in.GetTasksUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GetTasksUseCaseImpl implements GetTasksUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -27,7 +29,9 @@ public class GetTasksUseCaseImpl implements GetTasksUseCase {
      */
     @Override
     public List<Task> getTasksByStudentId(String studentId) {
-        return taskRepositoryPort.findByStudentId(studentId);
+        List<Task> tasks = taskRepositoryPort.findByStudentId(studentId);
+        log.debug("TASKS_FETCHED | operation=GET_BY_STUDENT | studentId={} | count={}", studentId, tasks.size());
+        return tasks;
     }
 
     @Override

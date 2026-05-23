@@ -50,15 +50,18 @@ public class CreateTaskUseCaseImpl implements CreateTaskUseCase {
             task.setPriority(TaskPriority.MEDIUM);
         }
 
+        TaskPriority priorityBeforeEscalation = task.getPriority();
         escalateIfUrgent(task);
+        boolean wasEscalated = task.getPriority() != priorityBeforeEscalation;
 
         if (task.getStatus() == null) {
             task.setStatus(TaskStatus.TODO);
         }
 
         Task saved = taskRepositoryPort.save(task);
-        log.info("AUDIT | operation=CREATE | studentId={} | taskId={} | title={} | createdAt={}",
-                saved.getStudentId(), saved.getId(), saved.getTitle(), LocalDateTime.now());
+        log.info("AUDIT | operation=CREATE | studentId={} | taskId={} | subjectId={} | priority={} | deadline={} | priorityEscalated={}",
+                saved.getStudentId(), saved.getId(), saved.getSubjectId(),
+                saved.getPriority(), saved.getDeadline(), wasEscalated);
 
         recalculatePriorityForActiveTasks(saved.getStudentId(), saved.getId());
 

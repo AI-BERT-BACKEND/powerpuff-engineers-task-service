@@ -5,6 +5,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.ports.in.GetTaskByIdUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GetTaskByIdUseCaseImpl implements GetTaskByIdUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -26,7 +28,10 @@ public class GetTaskByIdUseCaseImpl implements GetTaskByIdUseCase {
      */
     @Override
     public Task getTaskById(String taskId) {
-        return taskRepositoryPort.findById(taskId)
+        Task task = taskRepositoryPort.findById(taskId)
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
+        log.debug("TASK_FETCHED | operation=GET_BY_ID | taskId={} | studentId={} | status={}",
+                taskId, task.getStudentId(), task.getStatus());
+        return task;
     }
 }

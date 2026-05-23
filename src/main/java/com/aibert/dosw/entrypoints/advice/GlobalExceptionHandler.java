@@ -8,6 +8,7 @@ import com.aibert.dosw.domain.exceptions.TaskEditNotAllowedException;
 import com.aibert.dosw.domain.exceptions.TaskForbiddenException;
 import com.aibert.dosw.domain.exceptions.TaskNotFoundException;
 import feign.FeignException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -23,6 +24,7 @@ import java.util.Map;
  * Maps domain and validation exceptions to appropriate HTTP response codes and error bodies.
  */
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     /**
@@ -40,6 +42,7 @@ public class GlobalExceptionHandler {
             String field = ((FieldError) error).getField();
             errors.put(field, error.getDefaultMessage());
         });
+        log.warn("VALIDATION_ERROR | fields={} | errorCount={}", errors.keySet(), errors.size());
         return ResponseEntity.badRequest().body(errors);
     }
 
@@ -52,6 +55,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SubjectNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleSubjectNotFoundException(
             SubjectNotFoundException ex) {
+        log.warn("NOT_FOUND | exception=SubjectNotFoundException | message={}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("message", ex.getMessage()));
     }
@@ -65,6 +69,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SubjectNotInActiveSemesterException.class)
     public ResponseEntity<Map<String, String>> handleSubjectNotInActiveSemesterException(
             SubjectNotInActiveSemesterException ex) {
+        log.warn("UNPROCESSABLE | exception=SubjectNotInActiveSemesterException | message={}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(Map.of("message", ex.getMessage()));
     }
@@ -78,6 +83,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TaskConflictException.class)
     public ResponseEntity<Map<String, String>> handleTaskConflictException(
             TaskConflictException ex) {
+        log.warn("CONFLICT | exception=TaskConflictException | message={}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", ex.getMessage()));
     }
@@ -91,6 +97,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TaskNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleTaskNotFoundException(
             TaskNotFoundException ex) {
+        log.warn("NOT_FOUND | exception=TaskNotFoundException | message={}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("message", ex.getMessage()));
     }
@@ -104,6 +111,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TaskForbiddenException.class)
     public ResponseEntity<Map<String, String>> handleTaskForbiddenException(
             TaskForbiddenException ex) {
+        log.warn("FORBIDDEN | exception=TaskForbiddenException | message={}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("message", ex.getMessage()));
     }
@@ -117,6 +125,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TaskEditNotAllowedException.class)
     public ResponseEntity<Map<String, String>> handleTaskEditNotAllowedException(
             TaskEditNotAllowedException ex) {
+        log.warn("EDIT_NOT_ALLOWED | exception=TaskEditNotAllowedException | message={}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(Map.of("message", ex.getMessage()));
     }
@@ -131,6 +140,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExternalServiceUnavailableException.class)
     public ResponseEntity<Map<String, String>> handleExternalServiceUnavailableException(
             ExternalServiceUnavailableException ex) {
+        log.error("SERVICE_UNAVAILABLE | exception=ExternalServiceUnavailableException | message={}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Map.of("message", ex.getMessage()));
     }
@@ -143,6 +153,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(FeignException.class)
     public ResponseEntity<Map<String, String>> handleFeignException(FeignException ex) {
+        log.error("FEIGN_ERROR | exception=FeignException | status={} | message={}", ex.status(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Map.of("message", "El servicio externo no está disponible. Inténtelo más tarde."));
     }
@@ -155,6 +166,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
+        log.error("UNEXPECTED_ERROR | exception={} | message={}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "Ha ocurrido un error inesperado. Inténtelo más tarde."));
     }

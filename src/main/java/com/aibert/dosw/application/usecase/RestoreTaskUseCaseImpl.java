@@ -6,6 +6,7 @@ import com.aibert.dosw.domain.model.Task;
 import com.aibert.dosw.domain.ports.in.RestoreTaskUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RestoreTaskUseCaseImpl implements RestoreTaskUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -39,6 +41,7 @@ public class RestoreTaskUseCaseImpl implements RestoreTaskUseCase {
             throw new TaskForbiddenException(taskId);
         }
 
+        log.info("AUDIT | operation=RESTORE | studentId={} | taskId={} | title={}", studentId, taskId, task.getTitle());
         return task;
     }
 }

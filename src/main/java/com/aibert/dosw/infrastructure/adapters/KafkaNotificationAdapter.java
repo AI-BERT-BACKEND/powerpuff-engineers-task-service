@@ -28,14 +28,16 @@ public class KafkaNotificationAdapter implements TaskNotificationPort {
     @Override
     public void publish(TaskNotificationEvent event) {
         String key = event.userId() != null ? event.userId() : "";
+        log.info("KAFKA_PUBLISH | topic={} | eventType={} | userId={} | entityId={}",
+                topic, event.type(), event.userId(), event.relatedEntityId());
         kafkaTemplate.send(topic, key, event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        log.error("Failed to publish notification event: type={} userId={} error={}",
-                                event.type(), event.userId(), ex.getMessage());
+                        log.error("KAFKA_PUBLISH_FAILED | topic={} | eventType={} | userId={} | entityId={} | error={}",
+                                topic, event.type(), event.userId(), event.relatedEntityId(), ex.getMessage());
                     } else {
-                        log.info("Notification event published: type={} userId={} partition={} offset={}",
-                                event.type(), event.userId(),
+                        log.info("KAFKA_PUBLISH_SUCCESS | topic={} | eventType={} | userId={} | entityId={} | partition={} | offset={}",
+                                topic, event.type(), event.userId(), event.relatedEntityId(),
                                 result.getRecordMetadata().partition(),
                                 result.getRecordMetadata().offset());
                     }

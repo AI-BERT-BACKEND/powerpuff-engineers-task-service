@@ -6,6 +6,7 @@ import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.GetDailySummaryUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -14,6 +15,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GetDailySummaryUseCaseImpl implements GetDailySummaryUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -44,11 +46,14 @@ public class GetDailySummaryUseCaseImpl implements GetDailySummaryUseCase {
 
         totalScheduledHours = Math.round(totalScheduledHours * 10.0) / 10.0;
 
-        return DailySummaryResponse.builder()
+        DailySummaryResponse summary = DailySummaryResponse.builder()
                 .completionPercentage(completionPercentage)
                 .totalScheduledHours(totalScheduledHours)
                 .completedCount(completedCount)
                 .pendingCount(pendingCount)
                 .build();
+        log.debug("DAILY_SUMMARY | studentId={} | total={} | completed={} | pending={} | completion={}% | scheduledHours={}h",
+                studentId, totalCount, completedCount, pendingCount, completionPercentage, totalScheduledHours);
+        return summary;
     }
 }

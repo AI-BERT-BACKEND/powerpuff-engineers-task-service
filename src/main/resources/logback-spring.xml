@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <springProperty scope="context" name="SERVICE_NAME"  source="spring.application.name"  defaultValue="task-service"/>
+    <springProperty scope="context" name="ACTIVE_PROFILE" source="spring.profiles.active"   defaultValue="local"/>
+
+    <appender name="CONSOLE-TEXT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%thread] [%X{correlationId:-no-corr}] [%X{studentId:-anon}] %cyan(%logger{36}) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="CONSOLE-JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <provider class="net.logstash.logback.composite.loggingevent.LoggingEventPatternJsonProvider">
+            </provider>
+            <customFields>{"service":"${SERVICE_NAME}","environment":"${ACTIVE_PROFILE}"}</customFields>
+            <fieldNames>
+                <timestamp>@timestamp</timestamp>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+            </fieldNames>
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerCause>20</maxDepthPerCause>
+                <shortenedClassNameLength>40</shortenedClassNameLength>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC-JSON" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="CONSOLE-JSON"/>
+    </appender>
+
+    <logger name="com.aibert.dosw" level="DEBUG" additivity="false">
+        <springProfile name="qa">
+            <appender-ref ref="ASYNC-JSON"/>
+        </springProfile>
+        <springProfile name="!qa">
+            <appender-ref ref="CONSOLE-TEXT"/>
+        </springProfile>
+    </logger>
+
+    <logger name="com.aibert.dosw.infrastructure.external" level="DEBUG" additivity="false">
+        <springProfile name="qa">
+            <appender-ref ref="ASYNC-JSON"/>
+        </springProfile>
+        <springProfile name="!qa">
+            <appender-ref ref="CONSOLE-TEXT"/>
+        </springProfile>
+    </logger>
+
+    <logger name="org.apache.kafka" level="WARN"/>
+    <logger name="org.springframework.kafka" level="INFO"/>
+    <logger name="org.hibernate.SQL" level="OFF"/>
+    <logger name="org.hibernate.type.descriptor.sql" level="OFF"/>
+    <logger name="org.springframework.security" level="WARN"/>
+    <logger name="io.github.resilience4j" level="INFO"/>
+
+    <root level="INFO">
+        <springProfile name="qa">
+            <appender-ref ref="ASYNC-JSON"/>
+        </springProfile>
+        <springProfile name="!qa">
+            <appender-ref ref="CONSOLE-TEXT"/>
+        </springProfile>
+    </root>
+
+</configuration>

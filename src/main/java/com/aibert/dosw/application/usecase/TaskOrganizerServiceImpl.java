@@ -7,6 +7,7 @@ import com.aibert.dosw.domain.model.TaskStatus;
 import com.aibert.dosw.domain.ports.in.TaskOrganizerUseCase;
 import com.aibert.dosw.domain.ports.out.TaskRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -25,6 +26,7 @@ import java.util.Set;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
 
     private final TaskRepositoryPort taskRepositoryPort;
@@ -68,6 +70,7 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
     )
     @Override
     public List<Task> getPrioritizedActiveTasks(String studentId, boolean forzarRecalculo) {
+        log.debug("PRIORITIZED_TASKS | studentId={} | cacheBypass={}", studentId, forzarRecalculo);
         List<Task> allTasks = taskRepositoryPort.findByStudentId(studentId);
 
         List<Task> activeTasks = allTasks.stream()
@@ -76,9 +79,11 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
 
         escalatePriorityForUrgentTasks(activeTasks);
 
-        return activeTasks.stream()
+        List<Task> sorted = activeTasks.stream()
                 .sorted(buildComparator(SortCriteriaEnum.PRIORITY))
                 .toList();
+        log.debug("PRIORITIZED_TASKS | studentId={} | activeTasks={} | returned={}", studentId, activeTasks.size(), sorted.size());
+        return sorted;
     }
 
     @Override
@@ -96,6 +101,7 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
     private void escalatePriorityForUrgentTasks(List<Task> tasks) {
         LocalDateTime now = LocalDateTime.now();
         boolean anyUpdated = false;
+        int escalatedCount = 0;
 
         for (Task task : tasks) {
             if (task.getDeadline() == null) continue;
@@ -107,10 +113,13 @@ public class TaskOrganizerServiceImpl implements TaskOrganizerUseCase {
             if (isUrgent && canEscalate) {
                 task.setPriority(TaskPriority.CRITICAL);
                 anyUpdated = true;
+                escalatedCount++;
             }
         }
 
         if (anyUpdated) {
+            log.info("PRIORITY_ESCALATION | newlyEscalatedToCritical={} | reason=deadline_within_{}h",
+                    escalatedCount, DEADLINE_URGENCY_HOURS);
             taskRepositoryPort.saveAll(tasks);
         }
     }

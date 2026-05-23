@@ -58,7 +58,8 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
             throw new TaskForbiddenException(taskId);
         }
 
-        validateTransition(task.getStatus(), newStatus, taskId);
+        TaskStatus previousStatus = task.getStatus();
+        validateTransition(previousStatus, newStatus, taskId);
 
         task.setStatus(newStatus);
         task.setStatusChangedAt(LocalDateTime.now());
@@ -71,8 +72,8 @@ public class UpdateTaskStatusUseCaseImpl implements UpdateTaskStatusUseCase {
         }
 
         Task saved = taskRepositoryPort.save(task);
-        log.info("AUDIT | operation=STATUS_CHANGE | studentId={} | taskId={} | newStatus={} | changedAt={}",
-                studentId, taskId, newStatus, saved.getStatusChangedAt());
+        log.info("AUDIT | operation=STATUS_CHANGE | studentId={} | taskId={} | previousStatus={} | newStatus={} | changedAt={}",
+                studentId, taskId, previousStatus, newStatus, saved.getStatusChangedAt());
 
         // Notify gamification-service when a task is completed
         if (TaskStatus.COMPLETED.equals(newStatus)) {
