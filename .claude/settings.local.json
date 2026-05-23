@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(dir /s \"C:\\\\Users\\\\juanv\\\\OneDrive\\\\Documentos\\\\powerpuff-engineers-task-service\\\\src\\\\main\")",
-      "Bash(cd \"C:\\\\Users\\\\Usuario\\\\Documents\\\\dark-code-knights-academic-service\" && find . -name \"*.properties\" -o -name \"*.yml\" | head -20)",
-      "Read(//c/Users/Usuario/Documents/dark-code-knights-academic-service/**)"
-    ]
-  }
-}
